@@ -14,6 +14,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge() // edge-to-edge wajib (targetSdk 36)
         val app = application as ForfhApp
         val openTasks = intent.getBooleanExtra("open_tasks", false) // notif tugas (T7)
+        // consume flag: recreation berikutnya (rotate, process-death lalu kembali) membawa intent
+        // tanpa extra → LaunchedEffect(openTasks) di ForfhAppRoot no-op → tab restore pilihan user.
+        intent.removeExtra("open_tasks")
         setContent {
             ForfhTheme {
                 ForfhAppRoot(container = app.container, openTasks = openTasks)
