@@ -1319,7 +1319,7 @@ class DtoDecodeTest {
         val t = r.tasks.single()
         assertEquals("OVERDUE", t.computedStatus)
         assertEquals("2026-08-20T03:00:00.000Z", t.dueAt)
-        assertEquals("c9a84c", t.course?.color)
+        assertEquals("#c9a84c", t.course?.color)
         assertEquals(1, t.subtasks.size)
         assertNotNull(t.course)
     }
