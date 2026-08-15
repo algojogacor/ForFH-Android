@@ -97,4 +97,15 @@ class AlarmSchedulerTest {
         AlarmScheduler(api).schedule(classRow(trigger = 1_750_000_000_000L))
         assertTrue(api.calls.last().endsWith(":600000"))
     }
+
+    @Test
+    fun `reschedule - extras triggerAtMillis segar mengikuti trigger terbaru`() {
+        val api = FakeAlarmApi(exactAvailable = true)
+        val scheduler = AlarmScheduler(api)
+        val rowA = classRow(trigger = 1_750_000_000_000L)
+        val rowB = classRow(trigger = 1_760_000_000_000L)
+        scheduler.schedule(rowA)
+        scheduler.schedule(rowB) // id sama, trigger berubah (snooze/reschedule) — extras harus segar
+        assertEquals("1760000000000", api.lastExtras!!["triggerAtMillis"])
+    }
 }
