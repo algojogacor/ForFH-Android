@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ForFH</string>
+    <string name="tagline">JADWAL · TUGAS · ALARM</string>
+    <string name="channel_alarm_kuliah">Alarm Kuliah</string>
+    <string name="channel_reminder_tugas">Reminder Tugas</string>
+</resources>
