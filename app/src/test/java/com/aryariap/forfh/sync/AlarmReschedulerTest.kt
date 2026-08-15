@@ -90,7 +90,7 @@ class AlarmReschedulerTest {
 
     /** Baris "yang benar" (class offset 120 + task slot 15) — dihitung dari planner, sumber kebenaran sama. */
     private fun desiredRows(now: ZonedDateTime): Pair<ScheduledAlarmEntity, ScheduledAlarmEntity> {
-        val ops = ReconcilePlanner(planner).computeOps(emptyList(), listOf(sched()), listOf(120), now, fullRebuild = true)
+        val ops = ReconcilePlanner(planner).computeOps(emptyList(), listOf(sched()), mapOf(1 to listOf(120)), now, fullRebuild = true)
         val classRow = ops.filterIsInstance<AlarmOp.Schedule>().first { it.row.kind == "CLASS_ALARM" }.row
         val taskRow = ops.filterIsInstance<AlarmOp.Schedule>().first { it.row.kind == "TASK_REMINDER" && it.row.id.contains("|15|") }.row
         return classRow to taskRow

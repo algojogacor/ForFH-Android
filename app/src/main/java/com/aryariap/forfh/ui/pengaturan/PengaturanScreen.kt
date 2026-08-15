@@ -6,6 +6,8 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,23 +15,45 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.aryariap.forfh.BuildConfig
+import com.aryariap.forfh.data.prefs.AlarmOffsets
+import com.aryariap.forfh.data.prefs.formatOffsetMinutes
 import com.aryariap.forfh.ui.UiFormat
 
+/** Urutan tampil Senin..Minggu; dayOfWeek konvensi API ForFH (0=Minggu). */
+private val DAY_ORDER = listOf(
+    1 to "Senin", 2 to "Selasa", 3 to "Rabu", 4 to "Kamis",
+    5 to "Jumat", 6 to "Sabtu", 0 to "Minggu",
+)
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PengaturanScreen(viewModel: PengaturanViewModel) {
     val state by viewModel.state.collectAsState()
@@ -45,9 +69,34 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
         Text("Pengaturan", style = MaterialTheme.typography.titleLarge)
 
         Text("Pengingat kuliah", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-        ToggleRow("3 jam sebelum", state.offsets.offset3h) { viewModel.setOffset(180, it) }
-        ToggleRow("2 jam sebelum", state.offsets.offset2h) { viewModel.setOffset(120, it) }
-        ToggleRow("1 jam sebelum", state.offsets.offset1h) { viewModel.setOffset(60, it) }
+        Text(
+            text = "Alarm hanya untuk kuliah pertama hari itu — kamu masih di rumah dan mungkin tidur; " +
+                "kuliah berikutnya (sudah di kampus) tanpa alarm. Setiap hari punya daftar menit bebas " +
+                "sendiri (contoh: 90 = 1 j 30 m sebelum kelas).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        var dialogDay by rememberSaveable { mutableStateOf<Int?>(null) }
+        for ((day, label) in DAY_ORDER) {
+            DayOffsetsSection(
+                day = day,
+                label = label,
+                offsets = state.offsets.offsetsFor(day),
+                onAdd = { dialogDay = day },
+                onRemove = { minutes -> viewModel.removeOffset(day, minutes) },
+            )
+        }
+        if (dialogDay != null) {
+            AddOffsetDialog(
+                dayLabel = DAY_ORDER.first { it.first == dialogDay }.second,
+                existing = state.offsets.offsetsFor(dialogDay!!),
+                onConfirm = { minutes ->
+                    viewModel.addOffset(dialogDay!!, minutes)
+                    dialogDay = null
+                },
+                onDismiss = { dialogDay = null },
+            )
+        }
 
         HorizontalDivider()
 
@@ -103,10 +152,85 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
+private fun DayOffsetsSection(
+    day: Int,
+    label: String,
+    offsets: List<Int>,
+    onAdd: () -> Unit,
+    onRemove: (Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        if (offsets.isEmpty()) {
+            Text(
+                "Tidak ada alarm",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (minutes in offsets) {
+                    InputChip(
+                        selected = false,
+                        onClick = { onRemove(minutes) },
+                        label = { Text(formatOffsetMinutes(minutes)) },
+                        trailingIcon = {
+                            IconButton(onClick = { onRemove(minutes) }, modifier = Modifier.height(20.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Hapus", modifier = Modifier.height(16.dp))
+                            }
+                        },
+                    )
+                }
+            }
+        }
+        TextButton(onClick = onAdd) { Text("+ Tambah") }
     }
+}
+
+/** Dialog input menit bebas (1..720) dengan preview jam-menit; duplikat & di luar batas ditolak. */
+@Composable
+private fun AddOffsetDialog(
+    dayLabel: String,
+    existing: List<Int>,
+    onConfirm: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var input by rememberSaveable { mutableStateOf("") }
+    val minutes = input.toIntOrNull()
+    val duplicate = minutes != null && minutes in existing
+    val valid = minutes != null && minutes in AlarmOffsets.MIN_OFFSET_MINUTES..AlarmOffsets.MAX_OFFSET_MINUTES && !duplicate
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tambah alarm — $dayLabel") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it.filter(Char::isDigit).take(4) },
+                    label = { Text("Menit sebelum kelas") },
+                    supportingText = {
+                        Text(
+                            when {
+                                duplicate -> "Sudah ada di daftar."
+                                minutes == null -> "Angka ${AlarmOffsets.MIN_OFFSET_MINUTES}–${AlarmOffsets.MAX_OFFSET_MINUTES} (contoh: 90 = 1 j 30 m)."
+                                else -> "→ ${formatOffsetMinutes(minutes)} sebelum kelas"
+                            },
+                        )
+                    },
+                    isError = minutes != null && (minutes !in AlarmOffsets.MIN_OFFSET_MINUTES..AlarmOffsets.MAX_OFFSET_MINUTES || duplicate),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(minutes!!) }, enabled = valid) { Text("Tambah") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Batal") }
+        },
+    )
 }

@@ -4,6 +4,7 @@ import com.aryariap.forfh.alarm.AlarmFlowExtras
 import com.aryariap.forfh.alarm.AlarmPlanner
 import com.aryariap.forfh.data.db.ScheduleEntity
 import com.aryariap.forfh.data.db.ScheduledAlarmEntity
+import java.time.LocalTime
 import java.time.ZonedDateTime
 
 sealed interface AlarmOp {
@@ -27,11 +28,11 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
     fun computeOps(
         current: List<ScheduledAlarmEntity>,
         schedules: List<ScheduleEntity>,
-        offsets: List<Int>,
+        offsetsByDay: Map<Int, List<Int>>,
         now: ZonedDateTime,
         fullRebuild: Boolean,
     ): List<AlarmOp> {
-        val desired = desiredRows(schedules, offsets, now)
+        val desired = desiredRows(schedules, offsetsByDay, now)
         val currentById = current.associateBy { it.id }
         val nowMs = now.toInstant().toEpochMilli()
         val ops = mutableListOf<AlarmOp>()
@@ -57,13 +58,22 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
 
     private fun desiredRows(
         schedules: List<ScheduleEntity>,
-        offsets: List<Int>,
+        offsetsByDay: Map<Int, List<Int>>,
         now: ZonedDateTime,
     ): Map<String, ScheduledAlarmEntity> {
+        // Aturan pengguna: alarm kelas HANYA untuk kuliah pertama hari itu (start paling awal).
+        // Saat kuliah pertama mulai user masih di rumah (mungkin tidur); kuliah berikutnya ia
+        // sudah pasti bangun & di kampus → tidak perlu alarm apa pun (bukan juga notif).
+        val firstStartByDay = schedules
+            .filter { it.enabled }
+            .groupBy { it.dayOfWeek }
+            .mapValues { (_, list) -> list.minOf { LocalTime.parse(it.startTime) } }
+
         val result = mutableMapOf<String, ScheduledAlarmEntity>()
         for (s in schedules) {
             if (!s.enabled) continue // caller pakai getEnabledOnce; filter di sini utk pure function yang tahan input enabled=false
-            for (offset in offsets) {
+            if (LocalTime.parse(s.startTime) != firstStartByDay[s.dayOfWeek]) continue // bukan kuliah pertama → tanpa alarm
+            for (offset in offsetsByDay[s.dayOfWeek].orEmpty()) { // per hari: daftar offset harinya sendiri
                 val occ = planner.nextClassOccurrence(s.id, s.dayOfWeek, s.startTime, offset, now)
                 result[occ.identity] = ScheduledAlarmEntity(
                     id = occ.identity,

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -13,6 +14,9 @@ import com.aryariap.forfh.sync.SyncStateStore
 
 class Preferences(private val dataStore: DataStore<Preferences>) : SyncStateStore {
 
+    // Per-hari (0=Minggu..6=Sabtu, konvensi API ForFH): stringSet "180,120,60" dst.
+    // Key lama alarm_offset_{3h,2h,1h} tetap dibaca SEKALI sebagai migrasi bila key baru belum ada.
+    private fun dayKey(day: Int) = stringSetPreferencesKey("offset_day_$day")
     private val keyOffset3h = booleanPreferencesKey("alarm_offset_3h")
     private val keyOffset2h = booleanPreferencesKey("alarm_offset_2h")
     private val keyOffset1h = booleanPreferencesKey("alarm_offset_1h")
@@ -20,18 +24,26 @@ class Preferences(private val dataStore: DataStore<Preferences>) : SyncStateStor
     private val keyLastSyncStatus = stringPreferencesKey("last_sync_status")
 
     val offsets: Flow<AlarmOffsets> = dataStore.data.map { p ->
-        AlarmOffsets(
-            offset3h = p[keyOffset3h] ?: true,
-            offset2h = p[keyOffset2h] ?: true,
-            offset1h = p[keyOffset1h] ?: true,
-        )
+        val hasNewKeys = (0..6).any { p[dayKey(it)] != null }
+        if (!hasNewKeys) {
+            // Upgrade pertama dari toggle lama → daftar yang sama untuk semua hari (customisasi lama terjaga)
+            AlarmOffsets.fromLegacy(
+                offset3h = p[keyOffset3h] ?: true,
+                offset2h = p[keyOffset2h] ?: true,
+                offset1h = p[keyOffset1h] ?: true,
+            )
+        } else {
+            AlarmOffsets((0..6).associate { day ->
+                day to (p[dayKey(day)]?.mapNotNull { it.toIntOrNull() }.orEmpty())
+            })
+        }
     }
 
     suspend fun setOffsets(o: AlarmOffsets) {
         dataStore.edit { p ->
-            p[keyOffset3h] = o.offset3h
-            p[keyOffset2h] = o.offset2h
-            p[keyOffset1h] = o.offset1h
+            for (day in 0..6) {
+                p[dayKey(day)] = o.perDay[day].orEmpty().map { it.toString() }.toSet()
+            }
         }
     }
 

@@ -69,11 +69,10 @@ class AlarmRescheduler(
 
     private suspend fun compute(fullRebuild: Boolean): List<AlarmOp> {
         val now = ZonedDateTime.now(zone)
-        val offsets = prefs.offsets.first().activeOffsets()
         return ReconcilePlanner(planner).computeOps(
             current = alarmsDao.getAllOnce(),
             schedules = schedulesDao.getEnabledOnce(),
-            offsets = offsets,
+            offsetsByDay = prefs.offsets.first().perDay,
             now = now,
             fullRebuild = fullRebuild,
         )
