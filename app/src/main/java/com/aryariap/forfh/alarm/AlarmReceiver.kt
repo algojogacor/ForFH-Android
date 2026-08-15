@@ -20,6 +20,8 @@ class AlarmReceiver : BroadcastReceiver() {
                     ACTION_SNOOZE -> handler.snooze(intent.getStringExtra("identity") ?: "")
                     else -> Unit
                 }
+            } catch (t: Throwable) {
+                android.util.Log.e("AlarmReceiver", "handler gagal", t)
             } finally {
                 pending.finish()
             }

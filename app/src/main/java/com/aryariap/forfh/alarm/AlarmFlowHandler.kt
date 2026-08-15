@@ -28,20 +28,21 @@ class AlarmFlowHandler(
 
     /** CLASS_ALARM: guard berlapis → tampil (FSI/heads-up). Row dibiarkan utk snooze; basi dihapus. */
     suspend fun handleClassAlarm(intent: Intent) {
-        val scheduleId = intent.getStringExtra("scheduleId") ?: return
-        val offsetMinutes = intent.getIntExtra("offsetMinutes", -1)
-        val occurrenceDate = intent.getStringExtra("occurrenceDate") ?: return
-        val trigger = intent.getLongExtra("triggerAtMillis", -1L)
-        if (offsetMinutes < 0 || trigger < 0) return
+        val extras = AlarmFlowExtras.parseClassExtras(
+            scheduleId = intent.getStringExtra("scheduleId"),
+            offsetStr = intent.getStringExtra("offsetMinutes"),
+            occurrenceDate = intent.getStringExtra("occurrenceDate"),
+            triggerStr = intent.getStringExtra("triggerAtMillis"),
+        ) ?: return
         val identity = AlarmPlanner.classIdentity(
-            scheduleId, offsetMinutes, LocalDate.parse(occurrenceDate),
+            extras.scheduleId, extras.offsetMinutes, LocalDate.parse(extras.occurrenceDate),
         )
         val result = ReceiverGuard.evaluate(
             GuardInput(
                 isLoggedIn = sessionManager.isLoggedIn(),
-                schedule = schedulesDao.getByIdOnce(scheduleId),
+                schedule = schedulesDao.getByIdOnce(extras.scheduleId),
                 row = alarmsDao.getByIdOnce(identity),
-                extrasTriggerAtMillis = trigger,
+                extrasTriggerAtMillis = extras.triggerAtMillis,
                 nowEpochMillis = System.currentTimeMillis(),
                 hasNotificationPermission = notifications.hasPermission(),
             ),
@@ -62,10 +63,10 @@ class AlarmFlowHandler(
 
     /** TASK_REMINDER: one-shot → query Room → tampil → hapus row hari ini → schedule besok. */
     suspend fun handleTaskReminder(intent: Intent) {
-        val slotHour = intent.getIntExtra("slotHour", -1)
         val occurrenceDate = intent.getStringExtra("occurrenceDate") ?: return
-        val trigger = intent.getLongExtra("triggerAtMillis", -1L)
-        if (slotHour !in TASK_SLOTS || trigger < 0) return
+        val trigger = intent.getStringExtra("triggerAtMillis")?.toLongOrNull() ?: return
+        // slotHour tidak ada di extras (T6) → turunkan deterministik dari trigger + date (AlarmFlowExtras)
+        val slotHour = AlarmFlowExtras.resolveTaskSlot(occurrenceDate, trigger, zone) ?: return
         val identity = AlarmPlanner.taskIdentity(slotHour, LocalDate.parse(occurrenceDate))
         val row = alarmsDao.getByIdOnce(identity) ?: return
         if (row.triggerAtMillis != trigger) return
@@ -96,6 +97,7 @@ class AlarmFlowHandler(
     }
 
     companion object {
-        val TASK_SLOTS = listOf(9, 15, 20)
+        /** Alias source-compat — pemilik sebenarnya AlarmFlowExtras (dipakai resolveTaskSlot). */
+        val TASK_SLOTS = AlarmFlowExtras.TASK_SLOTS
     }
 }
