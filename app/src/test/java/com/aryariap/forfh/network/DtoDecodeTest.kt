@@ -71,4 +71,37 @@ class DtoDecodeTest {
         val err = json.decodeFromString<ErrorBody>("""{"error":"Judul tugas wajib diisi."}""")
         assertEquals("Judul tugas wajib diisi.", err.error)
     }
+
+    @Test
+    fun `credits null dari server - koerce ke default 2 (data produksi nyata)`() {
+        // Reproduksi data produksi 2026-08-15: courses.credits NULL di Turso untuk SEMUA jadwal
+        // & tugas Arya → server kirim "credits":null. Tanpa coerceInputValues, null untuk Int
+        // non-nullable membuat decode THROW (default value TIDAK dipakai saat field ada tapi
+        // null) → SerializationException → sync selalu gagal (jalur SERVER).
+        val sched = ApiClient.forfhJson.decodeFromString<SchedulesResponse>(
+            """{"schedules":[{
+                "id":"s1","courseId":"c1","courseName":"Pengantar Ilmu Hukum",
+                "courseCode":null,"courseColor":"#3b82f6","lecturer":null,"credits":null,
+                "dayOfWeek":1,"startTime":"08:00","endTime":"09:40","room":"A101",
+                "onlineUrl":null,"enabled":1
+            }]}""",
+        )
+        assertEquals(2, sched.schedules.single().credits)
+
+        val tasks = ApiClient.forfhJson.decodeFromString<TasksResponse>(
+            """{"tasks":[{
+                "id":"t1","userId":"u1","courseId":"c1","title":"Assessment HAM",
+                "description":null,"type":"assignment","dueAt":"2026-08-20T03:00:00.000Z",
+                "internalTargetAt":null,"priority":"medium","estimatedMinutes":null,
+                "status":"NOT_STARTED","progress":0,"source":"manual","completedAt":null,
+                "deletedAt":null,"version":1,"externalId":null,
+                "createdAt":"2026-08-01T03:00:00.000Z","updatedAt":"2026-08-01T03:00:00.000Z",
+                "computedStatus":"NOT_STARTED",
+                "course":{"id":"c1","userId":"u1","name":"Hak Asasi Manusia","code":null,
+                          "lecturer":null,"credits":null},
+                "subtasks":[]
+            }]}""",
+        )
+        assertEquals(2, tasks.tasks.single().course?.credits)
+    }
 }
