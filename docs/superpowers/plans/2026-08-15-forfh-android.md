@@ -632,12 +632,12 @@ class DueDateParserTest {
 
     @Test
     fun `ISO string dikonversi ke epoch millis`() {
-        assertEquals(1_787_281_200_000L, DueDateParser.parseToEpochMillis("2026-08-20T03:00:00.000Z"))
+        assertEquals(1_787_281_200_000L, DueDateParser.parseToEpochMillis("2026-08-21T03:00:00.000Z")) // anchor terverifikasi .NET: 21 Agu 03:00Z
     }
 
     @Test
     fun `epoch ms numerik diterima apa adanya`() {
-        assertEquals(1_787_281_200_000L, DueDateParser.parseToEpochMillis("1757775600000"))
+        assertEquals(1_787_281_200_000L, DueDateParser.parseToEpochMillis("1787281200000"))
     }
 
     @Test
@@ -1379,7 +1379,7 @@ class MappersTest {
         )
         val e: TaskEntity = dto.toEntity(nowMs = 1_000_000_000_000L)
         assertEquals("OVERDUE", e.computedStatus)
-        assertEquals(1_787_281_200_000L, e.dueAt)
+        assertEquals(1_787_194_800_000L, e.dueAt) // "2026-08-20T03:00:00.000Z" = 1_787_194_800_000 (terverifikasi .NET)
         // spec §7: subtasks tidak boleh hilang — disimpan JSON utk detail tugas
         assertNotNull(e.subtasksJson)
         assertTrue(e.subtasksJson!!.contains("Bab 1"))
@@ -2986,7 +2986,7 @@ class ReconcilePlannerTest {
         val snoozed = ScheduledAlarmEntity(
             id = "class|s1|120|2026-08-17", kind = "CLASS_ALARM", scheduleId = "s1",
             offsetMinutes = 120, occurrenceDate = "2026-08-17",
-            triggerAtMillis = 1_787_007_780_000L, // 17 Agu 06:03 WIB (snooze +3 mnt dari 06:00) — future vs now 00:00 WIB
+            triggerAtMillis = 1_787_007_780_000L, // 18 Agu 06:03 WIB (snooze +3 mnt dari trigger 06:00; anchor .NET) — future vs now 17 Agu 00:00 WIB
             snoozeCount = 2,
         )
         val ops = planner.computeOps(listOf(snoozed), listOf(s), listOf(120), now, fullRebuild = true)
@@ -3966,7 +3966,7 @@ class UiFormatTest {
     @Test
     fun `deadline epoch millis diformat WIB`() {
         // 2026-08-20T03:00:00.000Z = 2026-08-20 10:00 WIB
-        assertEquals("20 Agu 2026 · 10:00", UiFormat.deadline(1_787_281_200_000L, zone))
+        assertEquals("21 Agu 2026 · 10:00", UiFormat.deadline(1_787_281_200_000L, zone)) // 1_787_281_200_000 = 21 Agu 03:00Z = 10:00 WIB
     }
 
     @Test
