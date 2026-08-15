@@ -73,8 +73,17 @@ fun ForfhAppRoot(container: AppContainer, openTasks: Boolean) {
                 SessionEvent.LoggedIn ->
                     navController.navigate(Routes.MAIN) { popUpTo(0) { inclusive = true } }
                 is SessionEvent.LoggedOut -> {
+                    // 401 (cleanupDone=false) → cleanup §8.10 penuh; logout eksplisit sudah di-wipe oleh
+                    // container.logout() sendiri. Wipe TEPAT sekali per kejadian (spec §10).
                     if (!ev.cleanupDone) container.logout(ev.message)
-                    navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
+                    // Navigasi idempotent (fix round 2): container.logout meng-emit LoggedOut KEDUA
+                    // (cleanupDone=true) setelah wipe selesai — tanpa guard, event kedua ini me-navigate
+                    // ulang popUpTo(0) inclusive → entry LOGIN + ViewModel penampil pesan §10 dihancurkan
+                    // → pesan "Sesi berakhir, masuk lagi." hilang. Skip bila destination sudah LOGIN;
+                    // kasus 401 saat user sudah di LOGIN (sync background) juga aman tanpa re-navigasi.
+                    if (navController.currentDestination?.route != Routes.LOGIN) {
+                        navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
+                    }
                 }
             }
         }
