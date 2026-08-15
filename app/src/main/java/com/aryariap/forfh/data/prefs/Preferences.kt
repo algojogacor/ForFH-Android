@@ -22,6 +22,7 @@ class Preferences(private val dataStore: DataStore<Preferences>) : SyncStateStor
     private val keyOffset1h = booleanPreferencesKey("alarm_offset_1h")
     private val keyLastSyncAt = longPreferencesKey("last_sync_at")
     private val keyLastSyncStatus = stringPreferencesKey("last_sync_status")
+    private val keyMutedDate = stringPreferencesKey("alarms_muted_date")
 
     val offsets: Flow<AlarmOffsets> = dataStore.data.map { p ->
         val hasNewKeys = (0..6).any { p[dayKey(it)] != null }
@@ -44,6 +45,15 @@ class Preferences(private val dataStore: DataStore<Preferences>) : SyncStateStor
             for (day in 0..6) {
                 p[dayKey(day)] = o.perDay[day].orEmpty().map { it.toString() }.toSet()
             }
+        }
+    }
+
+    /** Tanggal "yyyy-MM-dd" saat user mematikan seluruh alarm kuliah hari itu (null = normal). */
+    val mutedDate: Flow<String?> = dataStore.data.map { it[keyMutedDate] }
+
+    suspend fun setMutedDate(date: String?) {
+        dataStore.edit { p ->
+            if (date == null) p.remove(keyMutedDate) else p[keyMutedDate] = date
         }
     }
 

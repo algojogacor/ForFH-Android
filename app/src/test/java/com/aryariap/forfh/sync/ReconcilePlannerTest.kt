@@ -115,6 +115,60 @@ class ReconcilePlannerTest {
     }
 
     @Test
+    fun `matikan alarm hari ini - row kelas hari itu tidak dibuat, task reminder tetap`() {
+        val now = wib("2026-08-15T10:00") // Sabtu
+        val ops = planner.computeOps(
+            emptyList(),
+            listOf(sched(day = 1, start = "13:00")),
+            mapOf(1 to listOf(120)),
+            now,
+            fullRebuild = true,
+            skipDates = setOf("2026-08-17"), // Senin dimatikan user
+        )
+        val classRows = ops.filterIsInstance<AlarmOp.Schedule>().filter { it.row.kind == "CLASS_ALARM" }.map { it.row }
+        assertEquals(0, classRows.size)
+        // task reminder TIDAK ikut dimatikan
+        assertEquals(3, ops.filterIsInstance<AlarmOp.Schedule>().count { it.row.kind == "TASK_REMINDER" })
+    }
+
+    @Test
+    fun `matikan alarm hari ini - hari berikutnya alarm minggu depan normal lagi`() {
+        val now = wib("2026-08-18T00:00") // Selasa — mute kemarin (Senin 17) sudah basi
+        val ops = planner.computeOps(
+            emptyList(),
+            listOf(sched(day = 1, start = "13:00")),
+            mapOf(1 to listOf(120)),
+            now,
+            fullRebuild = true,
+            skipDates = setOf("2026-08-17"),
+        )
+        val classRows = ops.filterIsInstance<AlarmOp.Schedule>().filter { it.row.kind == "CLASS_ALARM" }.map { it.row }
+        // occurrence berikutnya Senin 24 Agu — dibuat normal; tanggal basi tidak menghalangi
+        assertEquals(1, classRows.size)
+        assertEquals("2026-08-24", classRows.single().occurrenceDate)
+    }
+
+    @Test
+    fun `matikan alarm hari ini - row snooze aktif hari itu ikut di-cancel`() {
+        val now = wib("2026-08-15T00:00")
+        val snoozed = ScheduledAlarmEntity(
+            id = "class|s1|120|2026-08-17", kind = "CLASS_ALARM", scheduleId = "s1",
+            offsetMinutes = 120, occurrenceDate = "2026-08-17",
+            triggerAtMillis = 1_750_000_000_000L, snoozeCount = 2,
+        )
+        val ops = planner.computeOps(
+            listOf(snoozed),
+            listOf(sched(day = 1, start = "13:00")),
+            mapOf(1 to listOf(120)),
+            now,
+            fullRebuild = true,
+            skipDates = setOf("2026-08-17"),
+        )
+        // pengecualian aturan snooze-Keep: mute eksplisit user → cancel walau snooze aktif
+        assertTrue(ops.any { it is AlarmOp.Cancel && it.row.id == snoozed.id })
+    }
+
+    @Test
     fun `per hari - hari tanpa daftar offset tidak punya alarm kelas`() {
         val ops = planner.computeOps(emptyList(), listOf(sched(day = 2)), emptyMap(), wib("2026-08-15T10:00"), fullRebuild = true)
         val rows = ops.filterIsInstance<AlarmOp.Schedule>().map { it.row }

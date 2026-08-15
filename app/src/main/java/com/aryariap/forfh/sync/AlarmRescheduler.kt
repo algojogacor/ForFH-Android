@@ -75,6 +75,9 @@ class AlarmRescheduler(
             offsetsByDay = prefs.offsets.first().perDay,
             now = now,
             fullRebuild = fullRebuild,
+            // "Matikan seluruh alarm hari ini": tanggal disimpan DataStore, alarm kelas hari itu
+            // ditiadakan + row snooze aktif ikut di-cancel; basi otomatis saat ganti hari.
+            skipDates = prefs.mutedDate.first()?.let { setOf(it) } ?: emptySet(),
         )
     }
 

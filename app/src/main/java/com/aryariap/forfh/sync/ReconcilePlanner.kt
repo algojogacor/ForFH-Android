@@ -31,8 +31,9 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
         offsetsByDay: Map<Int, List<Int>>,
         now: ZonedDateTime,
         fullRebuild: Boolean,
+        skipDates: Set<String> = emptySet(),
     ): List<AlarmOp> {
-        val desired = desiredRows(schedules, offsetsByDay, now)
+        val desired = desiredRows(schedules, offsetsByDay, now, skipDates)
         val currentById = current.associateBy { it.id }
         val nowMs = now.toInstant().toEpochMilli()
         val ops = mutableListOf<AlarmOp>()
@@ -50,7 +51,10 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
         if (fullRebuild) {
             for (row in current) {
                 val snoozed = row.snoozeCount > 0 && row.triggerAtMillis > nowMs
-                if (row.id !in desired && !snoozed) ops += AlarmOp.Cancel(row)
+                // Pengecualian snooze-Keep: user eksplisit mematikan seluruh alarm tanggal itu
+                // ("Matikan seluruh alarm hari ini") → row snooze hari itu ikut di-cancel.
+                val mutedDay = row.kind == "CLASS_ALARM" && row.occurrenceDate in skipDates
+                if (row.id !in desired && (!snoozed || mutedDay)) ops += AlarmOp.Cancel(row)
             }
         }
         return ops
@@ -60,6 +64,7 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
         schedules: List<ScheduleEntity>,
         offsetsByDay: Map<Int, List<Int>>,
         now: ZonedDateTime,
+        skipDates: Set<String>,
     ): Map<String, ScheduledAlarmEntity> {
         // Aturan pengguna: alarm kelas HANYA untuk kuliah pertama hari itu (start paling awal).
         // Saat kuliah pertama mulai user masih di rumah (mungkin tidur); kuliah berikutnya ia
@@ -75,6 +80,8 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
             if (LocalTime.parse(s.startTime) != firstStartByDay[s.dayOfWeek]) continue // bukan kuliah pertama → tanpa alarm
             for (offset in offsetsByDay[s.dayOfWeek].orEmpty()) { // per hari: daftar offset harinya sendiri
                 val occ = planner.nextClassOccurrence(s.id, s.dayOfWeek, s.startTime, offset, now)
+                val occDate = occ.occurrenceDate.toString()
+                if (occDate in skipDates) continue // user mematikan seluruh alarm tanggal itu
                 result[occ.identity] = ScheduledAlarmEntity(
                     id = occ.identity,
                     kind = "CLASS_ALARM",

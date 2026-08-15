@@ -46,6 +46,7 @@ import com.aryariap.forfh.BuildConfig
 import com.aryariap.forfh.data.prefs.AlarmOffsets
 import com.aryariap.forfh.data.prefs.formatOffsetMinutes
 import com.aryariap.forfh.ui.UiFormat
+import java.time.LocalDate
 
 /** Urutan tampil Senin..Minggu; dayOfWeek konvensi API ForFH (0=Minggu). */
 private val DAY_ORDER = listOf(
@@ -76,6 +77,25 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // "Matikan seluruh alarm hari ini": sekali per hari, besok normal lagi
+        // (tombol "Tutup" di layar alarm tetap hanya mematikan alarm yang berbunyi).
+        val today = LocalDate.now().toString()
+        val mutedToday = state.mutedDate == today
+        if (mutedToday) {
+            Text(
+                "Semua alarm kuliah hari ini dimatikan — besok normal lagi.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            OutlinedButton(onClick = { viewModel.unmuteToday() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Aktifkan lagi alarm hari ini")
+            }
+        } else {
+            OutlinedButton(onClick = { viewModel.muteToday() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Matikan seluruh alarm hari ini")
+            }
+        }
+
         var dialogDay by rememberSaveable { mutableStateOf<Int?>(null) }
         for ((day, label) in DAY_ORDER) {
             DayOffsetsSection(
