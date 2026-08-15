@@ -5,7 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -20,10 +20,24 @@ import com.aryariap.forfh.data.db.ScheduledAlarmEntity
  */
 class ForfhNotifications(private val context: Context) {
 
+    // Suara alarm: Extreme.mp3 milik user, di-bundle ke res/raw (pilihan user 2026-08-15).
+    // Resource URI — selalu ada, tanpa izin baca file, berfungsi di background (FSI & heads-up).
+    private val alarmSoundUri: Uri =
+        Uri.parse("android.resource://${context.packageName}/${R.raw.extreme}")
+
     private val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     fun ensureChannels() {
         if (Build.VERSION.SDK_INT >= 26) {
+            // Migrasi suara alarm → Extreme.mp3: sound channel TIDAK bisa diubah setelah
+            // create (API 26+ mengunci sound saat channel dibuat). Channel lama dari
+            // versi sebelumnya harus di-delete lalu di-recreate — sekali, dipicu flag.
+            // Tanpa ini, APK baru tetap bunyi suara sistem di channel yang sudah ada.
+            val prefs = context.getSharedPreferences("forfh_notif", Context.MODE_PRIVATE)
+            if (prefs.getInt("channel_sound_version", 0) < CHANNEL_SOUND_VERSION) {
+                nm.deleteNotificationChannel(CHANNEL_CLASS)
+                prefs.edit().putInt("channel_sound_version", CHANNEL_SOUND_VERSION).apply()
+            }
             nm.createNotificationChannel(
                 NotificationChannel(
                     CHANNEL_CLASS,
@@ -31,7 +45,7 @@ class ForfhNotifications(private val context: Context) {
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
                     description = "Alarm bangun kuliah"
-                    setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM), null)
+                    setSound(alarmSoundUri, null)
                     enableVibration(true)
                     // CATEGORY_ALARM dibawa notifikasi (builder), bukan channel — setCategory channel API tersembunyi
                 },
@@ -77,7 +91,7 @@ class ForfhNotifications(private val context: Context) {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(false)
-            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+            .setSound(alarmSoundUri)
             .setVibrate(longArrayOf(0, 500, 200, 500))
             .setContentIntent(fsiPi)
             .setDeleteIntent(null)
@@ -124,5 +138,7 @@ class ForfhNotifications(private val context: Context) {
     companion object {
         const val CHANNEL_CLASS = "alarm_kuliah"
         const val CHANNEL_TASK = "reminder_tugas"
+        // Bump tiap kali sound/vibration channel berubah — memicu delete+recreate sekali
+        private const val CHANNEL_SOUND_VERSION = 2
     }
 }
