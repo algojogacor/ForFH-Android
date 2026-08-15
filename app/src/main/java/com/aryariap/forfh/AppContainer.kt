@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 class AppContainer(private val app: ForfhApp) {
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val context: android.content.Context get() = app
 
     val database: AppDatabase by lazy { AppDatabase.build(app) }
 
