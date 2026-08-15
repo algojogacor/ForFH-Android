@@ -90,6 +90,15 @@ fun ForfhAppRoot(container: AppContainer, openTasks: Boolean) {
 @Composable
 private fun MainScaffold(container: AppContainer, openTasks: Boolean) {
     var tab by rememberSaveable { mutableIntStateOf(if (openTasks) 1 else 0) }
+
+    // REQ-19: openTasks harus menang atas rememberSaveable saat saved-state restore
+    // (proses dibunuh di background → onCreate dengan savedInstanceState → tab restore,
+    // misal Jadwal=0, menutupi openTasks=1). Sekali per launch: openTasks konstan,
+    // tidak menimpa pilihan tab user berikutnya.
+    LaunchedEffect(openTasks) {
+        if (openTasks) tab = 1
+    }
+
     val context = LocalContext.current
     val containerApp = (context.applicationContext as ForfhApp).container
 
