@@ -2,10 +2,11 @@ package com.aryariap.forfh.sync
 
 import com.aryariap.forfh.alarm.AlarmPlanner
 import com.aryariap.forfh.alarm.AlarmScheduler
-import com.aryariap.forfh.data.db.ScheduledAlarmEntity
 import com.aryariap.forfh.data.db.ScheduledAlarmsDao
 import com.aryariap.forfh.data.db.SchedulesDao
 import com.aryariap.forfh.data.prefs.Preferences
+import kotlinx.coroutines.flow.first
+import java.time.ZoneId
 import java.time.ZonedDateTime
 
 class AlarmRescheduler(
@@ -15,23 +16,36 @@ class AlarmRescheduler(
     private val schedulesDao: SchedulesDao,
     private val prefs: Preferences,
 ) {
+    private val zone = ZoneId.of("Asia/Jakarta")
+
+    /** Cancel semua yang obsolete lalu bangun ulang; sesi snooze aktif dipertahankan apa adanya (§8.1). */
+    suspend fun rescheduleAll() = execute(compute(fullRebuild = true))
+
+    /** Idempotent: perbaiki yang hilang tanpa menyentuh yang sudah benar. */
+    suspend fun reconcile() = execute(compute(fullRebuild = false))
+
+    /** Pasang satu row (snooze, reschedule setelah restore exact) — tidak menyentuh row lain. */
+    suspend fun scheduleRow(row: com.aryariap.forfh.data.db.ScheduledAlarmEntity) {
+        alarmsDao.upsert(row)
+        scheduler.schedule(row)
+    }
+
     /** Cancel + hapus row identity (dipakai guard SkipCancel & slot tugas selesai). */
     suspend fun cancelAlarm(identity: String) {
         alarmsDao.getByIdOnce(identity)?.let { scheduler.cancel(it) }
         alarmsDao.deleteById(identity)
     }
 
-    /** Pasang satu row (snooze, reschedule) — tidak menyentuh row lain. */
-    suspend fun scheduleRow(row: ScheduledAlarmEntity) {
-        alarmsDao.upsert(row)
-        scheduler.schedule(row)
+    /** Logout §8.10: cancel seluruh alarm tanpa menghapus row (row dihapus terpisah). */
+    suspend fun cancelAll() {
+        alarmsDao.getAllOnce().forEach { scheduler.cancel(it) }
     }
 
     /** Pola one-shot tugas: hapus row hari ini, pasang row besok (§8.7). */
     suspend fun replaceTaskSlotRow(slotHour: Int, now: ZonedDateTime) {
         val (date, trigger) = planner.nextTaskSlot(slotHour, now)
         val identity = AlarmPlanner.taskIdentity(slotHour, date)
-        val row = ScheduledAlarmEntity(
+        val row = com.aryariap.forfh.data.db.ScheduledAlarmEntity(
             id = identity,
             kind = "TASK_REMINDER",
             scheduleId = null,
@@ -42,5 +56,33 @@ class AlarmRescheduler(
         )
         alarmsDao.upsert(row)
         scheduler.schedule(row)
+    }
+
+    private suspend fun compute(fullRebuild: Boolean): List<AlarmOp> {
+        val now = ZonedDateTime.now(zone)
+        val offsets = prefs.offsets.first().activeOffsets()
+        return ReconcilePlanner(planner).computeOps(
+            current = alarmsDao.getAllOnce(),
+            schedules = schedulesDao.getEnabledOnce(),
+            offsets = offsets,
+            now = now,
+            fullRebuild = fullRebuild,
+        )
+    }
+
+    private suspend fun execute(ops: List<AlarmOp>) {
+        for (op in ops) {
+            when (op) {
+                is AlarmOp.Schedule -> {
+                    alarmsDao.upsert(op.row)
+                    scheduler.schedule(op.row)
+                }
+                is AlarmOp.Cancel -> {
+                    scheduler.cancel(op.row)
+                    alarmsDao.deleteById(op.row.id)
+                }
+                AlarmOp.Keep -> Unit
+            }
+        }
     }
 }
