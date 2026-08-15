@@ -21,8 +21,17 @@ class AlarmRescheduler(
     /** Cancel semua yang obsolete lalu bangun ulang; sesi snooze aktif dipertahankan apa adanya (§8.1). */
     suspend fun rescheduleAll() = execute(compute(fullRebuild = true))
 
-    /** Idempotent: perbaiki yang hilang tanpa menyentuh yang sudah benar. */
-    suspend fun reconcile() = execute(compute(fullRebuild = false))
+    /**
+     * Boot/MY_PACKAGE_REPLACED (§8.9): AlarmManager KOSONG setelah reboot — re-arm SEMUA row Room.
+     * Idempotent: identity sama → requestCode sama (StableHash) → setExact mengganti, tidak ganda.
+     * Snooze dipertahankan apa adanya: schedule() memakai triggerAtMillis tersimpan, snoozeCount
+     * tak disentuh, Room tak di-write (§8.1). (Fix round final review: sebelumnya memakai
+     * computeOps(fullRebuild=false) yang mengeluarkan Keep utk row cocok → alarm mati diam-diam
+     * sampai occurrence bergeser atau jadwal berubah di server.)
+     */
+    suspend fun reconcile() {
+        alarmsDao.getAllOnce().forEach { scheduler.schedule(it) }
+    }
 
     /** Pasang satu row (snooze, reschedule setelah restore exact) — tidak menyentuh row lain. */
     suspend fun scheduleRow(row: com.aryariap.forfh.data.db.ScheduledAlarmEntity) {

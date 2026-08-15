@@ -26,6 +26,20 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state
 
+    init {
+        // Pesan logout (eksplisit "Kamu sudah keluar." / 401 "Sesi berakhir, masuk lagi.") ditampilkan
+        // sebagai baris error di LoginScreen (spec §10). StateFlow: VM lahir SETELAH navigasi tetap
+        // menerima pesan; dikonsumsi setelah tampil agar tidak muncul lagi di kunjungan berikutnya.
+        viewModelScope.launch {
+            container.sessionManager.logoutMessage.collect { msg ->
+                if (msg != null) {
+                    _state.value = _state.value.copy(error = msg)
+                    container.sessionManager.consumeLogoutMessage()
+                }
+            }
+        }
+    }
+
     fun onEmailChange(v: String) { _state.value = _state.value.copy(email = v, error = null) }
     fun onPasswordChange(v: String) { _state.value = _state.value.copy(password = v, error = null) }
 

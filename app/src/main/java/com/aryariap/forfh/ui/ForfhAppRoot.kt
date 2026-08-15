@@ -63,14 +63,19 @@ fun ForfhAppRoot(container: AppContainer, openTasks: Boolean) {
         navController.navigate(if (loggedIn) Routes.MAIN else Routes.LOGIN) { popUpTo(0) }
     }
 
-    // Auto-logout (401) & login sukses → pindah halaman (spec §10)
+    // Auto-logout (401) & login sukses → pindah halaman (spec §10).
+    // 401 (cleanupDone=false) → jalankan container.logout: wipe §8.10 penuh (cancel alarm, hapus
+    // Room + DataStore + cookie) TEPAT SEKALI per kejadian; logout eksplisit sudah di-wipe oleh
+    // container.logout sendiri (cleanupDone=true) — tidak dua kali (fix round final review).
     LaunchedEffect(Unit) {
         container.sessionManager.events.collect { ev ->
             when (ev) {
                 SessionEvent.LoggedIn ->
                     navController.navigate(Routes.MAIN) { popUpTo(0) { inclusive = true } }
-                is SessionEvent.LoggedOut ->
+                is SessionEvent.LoggedOut -> {
+                    if (!ev.cleanupDone) container.logout(ev.message)
                     navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
+                }
             }
         }
     }

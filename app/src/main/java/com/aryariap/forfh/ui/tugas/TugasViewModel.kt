@@ -7,6 +7,7 @@ import com.aryariap.forfh.network.MarkDoneRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
 import java.time.ZoneId
 
 data class TugasItem(
@@ -62,11 +63,18 @@ class TugasViewModel(private val container: AppContainer) : ViewModel() {
 
     /**
      * Server sumber kebenaran (invariant §7, REQ-13): PUT sukses → baru update Room.
-     * Gagal → tugas tetap utuh, user diberi tahu.
+     * Gagal → tugas tetap utuh, user diberi tahu. (Fix round final review: transport failure
+     * retrofit suspend melempar IOException — tanpa try/catch ini jadi uncaught di viewModelScope
+     * → process crash; spec §10: tangani dengan pesan, jangan crash.)
      */
     fun markDone(taskId: String) {
         viewModelScope.launch {
-            val resp = container.apiService.markDone(taskId, MarkDoneRequest("DONE"))
+            val resp = try {
+                container.apiService.markDone(taskId, MarkDoneRequest("DONE"))
+            } catch (e: IOException) {
+                _state.value = _state.value.copy(message = "Gagal menandai selesai. Cek koneksi, coba lagi.")
+                return@launch
+            }
             if (resp.isSuccessful) {
                 container.database.tasksDao().updateStatus(taskId, "DONE", null)
                 _state.value = _state.value.copy(message = "Tugas ditandai selesai.")
