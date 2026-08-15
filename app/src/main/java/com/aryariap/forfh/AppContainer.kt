@@ -1,3 +1,7 @@
 package com.aryariap.forfh
 
-class AppContainer(private val app: ForfhApp)
+import com.aryariap.forfh.data.db.AppDatabase
+
+class AppContainer(private val app: ForfhApp) {
+    val database: AppDatabase by lazy { AppDatabase.build(app) }
+}

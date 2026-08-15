@@ -290,7 +290,8 @@ val keystoreProps = Properties().apply {
 
 android {
     namespace = "com.aryariap.forfh"
-    compileSdk = 36
+    compileSdk = 37 // library plan sendiri (Compose BOM 2026.08.00 / core 1.19.0 / lifecycle 2.11.0) menuntut >= 37 — diverifikasi di T1 (checkDebugAarMetadata)
+    // targetSdk tetap 36 (edge-to-edge + izin sesuai spec)
 
     defaultConfig {
         applicationId = "com.aryariap.forfh"
