@@ -37,4 +37,25 @@ class AppContainer(private val app: ForfhApp) {
     val apiService: ForfhApiService by lazy {
         ApiClient.retrofit(ApiClient.build(cookieJar, sessionManager))
     }
+
+    val planner: com.aryariap.forfh.alarm.AlarmPlanner by lazy { com.aryariap.forfh.alarm.AlarmPlanner() }
+    val scheduler: com.aryariap.forfh.alarm.AlarmScheduler by lazy {
+        com.aryariap.forfh.alarm.AlarmScheduler(com.aryariap.forfh.alarm.AndroidAlarmApi(app))
+    }
+    val rescheduler: com.aryariap.forfh.sync.AlarmRescheduler by lazy {
+        com.aryariap.forfh.sync.AlarmRescheduler(planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs)
+    }
+    val notifications: com.aryariap.forfh.alarm.ForfhNotifications by lazy { com.aryariap.forfh.alarm.ForfhNotifications(app) }
+    val alarmFlow: com.aryariap.forfh.alarm.AlarmFlowHandler by lazy {
+        com.aryariap.forfh.alarm.AlarmFlowHandler(
+            context = app,
+            database = database,
+            prefs = prefs,
+            sessionManager = sessionManager,
+            rescheduler = rescheduler,
+            notifications = notifications,
+            planner = planner,
+            scope = applicationScope,
+        )
+    }
 }
