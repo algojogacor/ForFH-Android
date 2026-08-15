@@ -35,4 +35,7 @@ class PersistentCookieJar(
             value.split("; ").mapNotNull { Cookie.parse(url, it) }
         }.getOrDefault(emptyList())
     }
+
+    /** Logout §8.10 — evict cookie in-memory (store dibersihkan terpisah oleh AppContainer). */
+    fun clear() { cookies.clear() }
 }

@@ -19,4 +19,7 @@ class SessionManager(private val cookieStore: SecureCookieStore) {
 
     /** 401 di /api/ selain login → auto-logout (data dibersihkan oleh AppContainer.logout). */
     fun onSessionExpired() { _events.tryEmit(SessionEvent.LoggedOut("Sesi berakhir, masuk lagi.")) }
+
+    /** Emisi LoggedOut dari alur logout eksplisit (bukan 401). */
+    fun tryEmitLoggedOut(message: String) { _events.tryEmit(SessionEvent.LoggedOut(message)) }
 }

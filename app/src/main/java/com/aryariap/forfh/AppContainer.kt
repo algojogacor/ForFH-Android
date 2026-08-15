@@ -1,33 +1,44 @@
 package com.aryariap.forfh
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences as CorePreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import com.aryariap.forfh.alarm.AlarmFlowHandler
+import com.aryariap.forfh.alarm.AlarmPlanner
+import com.aryariap.forfh.alarm.AlarmScheduler
+import com.aryariap.forfh.alarm.AndroidAlarmApi
+import com.aryariap.forfh.alarm.ForfhNotifications
 import com.aryariap.forfh.data.db.AppDatabase
 import com.aryariap.forfh.data.prefs.Preferences
 import com.aryariap.forfh.data.prefs.SecureCookieStore
+import com.aryariap.forfh.data.prefs.SessionEvent
 import com.aryariap.forfh.data.prefs.SessionManager
 import com.aryariap.forfh.network.ApiClient
 import com.aryariap.forfh.network.ForfhApiService
 import com.aryariap.forfh.network.PersistentCookieJar
+import com.aryariap.forfh.sync.AlarmRescheduler
+import com.aryariap.forfh.sync.SyncRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class AppContainer(private val app: ForfhApp) {
+
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val database: AppDatabase by lazy { AppDatabase.build(app) }
 
     private val dataStore: DataStore<CorePreferences> by lazy {
-        androidx.datastore.preferences.core.PreferenceDataStoreFactory.create(
+        PreferenceDataStoreFactory.create(
             scope = applicationScope,
             produceFile = { app.preferencesDataStoreFile("forfh_prefs") },
         )
     }
 
     val prefs: Preferences by lazy { Preferences(dataStore) }
-    val secureCookieStore: SecureCookieStore by lazy { SecureCookieStore(dataStore, applicationScope) }
+    val secureCookieStore: SecureCookieStore by lazy { SecureCookieStore(dataStore) }
     val sessionManager: SessionManager by lazy { SessionManager(secureCookieStore) }
 
     private val cookieJar: PersistentCookieJar by lazy {
@@ -38,16 +49,19 @@ class AppContainer(private val app: ForfhApp) {
         ApiClient.retrofit(ApiClient.build(cookieJar, sessionManager))
     }
 
-    val planner: com.aryariap.forfh.alarm.AlarmPlanner by lazy { com.aryariap.forfh.alarm.AlarmPlanner() }
-    val scheduler: com.aryariap.forfh.alarm.AlarmScheduler by lazy {
-        com.aryariap.forfh.alarm.AlarmScheduler(com.aryariap.forfh.alarm.AndroidAlarmApi(app))
+    val planner: AlarmPlanner by lazy { AlarmPlanner() }
+    val scheduler: AlarmScheduler by lazy { AlarmScheduler(AndroidAlarmApi(app)) }
+    val rescheduler: AlarmRescheduler by lazy {
+        AlarmRescheduler(planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs)
     }
-    val rescheduler: com.aryariap.forfh.sync.AlarmRescheduler by lazy {
-        com.aryariap.forfh.sync.AlarmRescheduler(planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs)
+    val notifications: ForfhNotifications by lazy { ForfhNotifications(app) }
+
+    val syncRepository: SyncRepository by lazy {
+        SyncRepository(apiService, database.schedulesDao(), database.tasksDao(), prefs)
     }
-    val notifications: com.aryariap.forfh.alarm.ForfhNotifications by lazy { com.aryariap.forfh.alarm.ForfhNotifications(app) }
-    val alarmFlow: com.aryariap.forfh.alarm.AlarmFlowHandler by lazy {
-        com.aryariap.forfh.alarm.AlarmFlowHandler(
+
+    val alarmFlow: AlarmFlowHandler by lazy {
+        AlarmFlowHandler(
             context = app,
             database = database,
             prefs = prefs,
@@ -57,5 +71,24 @@ class AppContainer(private val app: ForfhApp) {
             planner = planner,
             scope = applicationScope,
         )
+    }
+
+    /** Logout §8.10: cancel alarm → hapus scheduled_alarms → wipe Room + DataStore + cookie. */
+    fun logout(message: String) {
+        applicationScope.launch {
+            rescheduler.cancelAll()
+            database.scheduledAlarmsDao().clearAll()
+            database.schedulesDao().clearAll()
+            database.tasksDao().clearAll()
+            cookieJar.clear() // T4-M3: evict cookie in-memory — WAJIB sebelum secureCookieStore.clear()
+            secureCookieStore.clear()
+            prefs.setLastSync(0L, "")
+            sessionManager.tryEmitLoggedOut(message)
+        }
+    }
+
+    /** Dipanggil MainActivity: daftarkan emitter kejadian sesi. */
+    fun collectSessionEvents(onEvent: (SessionEvent) -> Unit) {
+        applicationScope.launch { sessionManager.events.collect(onEvent) }
     }
 }

@@ -7,9 +7,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -22,7 +20,6 @@ import javax.crypto.spec.GCMParameterSpec
  */
 class SecureCookieStore(
     private val dataStore: DataStore<Preferences>,
-    private val scope: CoroutineScope,
 ) {
     private val keyCipher = stringPreferencesKey("cookie_cipher")
     private val keyIv = stringPreferencesKey("cookie_iv")
