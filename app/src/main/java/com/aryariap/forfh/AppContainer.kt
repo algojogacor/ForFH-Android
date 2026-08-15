@@ -7,6 +7,9 @@ import com.aryariap.forfh.data.db.AppDatabase
 import com.aryariap.forfh.data.prefs.Preferences
 import com.aryariap.forfh.data.prefs.SecureCookieStore
 import com.aryariap.forfh.data.prefs.SessionManager
+import com.aryariap.forfh.network.ApiClient
+import com.aryariap.forfh.network.ForfhApiService
+import com.aryariap.forfh.network.PersistentCookieJar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,4 +29,12 @@ class AppContainer(private val app: ForfhApp) {
     val prefs: Preferences by lazy { Preferences(dataStore) }
     val secureCookieStore: SecureCookieStore by lazy { SecureCookieStore(dataStore, applicationScope) }
     val sessionManager: SessionManager by lazy { SessionManager(secureCookieStore) }
+
+    private val cookieJar: PersistentCookieJar by lazy {
+        PersistentCookieJar(secureCookieStore, applicationScope)
+    }
+
+    val apiService: ForfhApiService by lazy {
+        ApiClient.retrofit(ApiClient.build(cookieJar, sessionManager))
+    }
 }
