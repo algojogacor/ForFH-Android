@@ -7,7 +7,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val LightScheme = lightColorScheme(
+// internal (bukan private) supaya widget Glance memakai skema yang sama (Task 3: ForfhWidget.kt)
+internal val LightScheme = lightColorScheme(
     primary = ForfhColors.Accent,
     onPrimary = Color.White,
     primaryContainer = ForfhColors.AccentSubtle,
@@ -25,7 +26,7 @@ private val LightScheme = lightColorScheme(
     tertiary = ForfhColors.Success,
 )
 
-private val DarkScheme = darkColorScheme(
+internal val DarkScheme = darkColorScheme(
     primary = ForfhColors.AccentDark,
     onPrimary = ForfhColors.CanvasDark,
     primaryContainer = ForfhColors.AccentHover,

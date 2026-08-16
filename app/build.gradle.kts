@@ -90,6 +90,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.work.runtime)
     implementation(libs.coroutines.android)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
 }

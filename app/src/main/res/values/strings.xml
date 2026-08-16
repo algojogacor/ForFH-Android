@@ -4,4 +4,5 @@
     <string name="tagline">JADWAL · TUGAS · ALARM</string>
     <string name="channel_alarm_kuliah">Alarm Kuliah</string>
     <string name="channel_reminder_tugas">Reminder Tugas</string>
+    <string name="widget_description">Widget jadwal: kelas berikutnya dan alarm berikutnya</string>
 </resources>
