@@ -85,4 +85,15 @@ class DeadlineDecisionTest {
             DeadlineDecision.decide(deadlineExtras(), row(), isLoggedIn = true, task = task(status = "DONE"), today),
         )
     }
+
+    @Test
+    fun `due date tugas dipindah setelah row di-arm - CancelSilently - notif stale tidak tampil`() {
+        // Row ter-arm utk deadline 18-08 (identity taskdl|t1|2026-08-18); dueAt lalu dipindah ke
+        // 20-08 (deadline lusa) — row versi lama sudah tidak relevan, Reconcile membangun ulang.
+        val moved = task().copy(dueAt = wibEpoch(2026, 8, 20, 23, 59))
+        assertEquals(
+            DeadlineAction.CancelSilently,
+            DeadlineDecision.decide(deadlineExtras(), row(), isLoggedIn = true, task = moved, today),
+        )
+    }
 }

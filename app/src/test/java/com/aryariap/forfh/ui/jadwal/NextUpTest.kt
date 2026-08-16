@@ -28,14 +28,16 @@ class NextUpTest {
     )
 
     @Test
-    fun `kuliah pertama hari ini yang belum lewat dipilih - yang lewat ke minggu depan, disabled diabaikan`() {
+    fun `kuliah pertama hari ini yang belum lewat dipilih - yang sudah lewat digeser ke minggu depan`() {
         val now = wib("2026-08-17T07:30") // Senin 07:30
+        // Kontrak pemanggil: helper hanya menerima schedule enabled — filter enabled dilakukan
+        // pemanggil (getEnabledOnce di NextUpViewModel/ForfhWidget), helper sendiri TIDAK membaca
+        // flag enabled (lihat kasus "tanpa schedule enabled - null"). Di sini hanya soal waktu.
         val next = nextUp(
             listOf(
                 sched("s1", day = 1, start = "08:00"), // Senin ini 08:00, belum lewat → dipilih
                 sched("s2", day = 1, start = "07:00"), // sudah lewat (07:00 < 07:30) → Senin depan
                 sched("s3", day = 2, start = "10:00"), // Selasa 10:00, lebih lambat dari s1
-                sched("s4", day = 1, start = "06:00", enabled = false), // disabled → diabaikan
             ),
             now,
         )

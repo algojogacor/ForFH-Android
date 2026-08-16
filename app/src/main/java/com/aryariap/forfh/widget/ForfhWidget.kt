@@ -28,16 +28,16 @@ import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.jadwal.nextUp
 import com.aryariap.forfh.ui.theme.DarkScheme
 import com.aryariap.forfh.ui.theme.LightScheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
- * Widget jadwal ForFH (Task 3 skeleton + Task 4 data): kelas berikutnya + alarm berikutnya,
- * dibaca dari Room tiap render (trigger: refreshAll dari 4 titik update + updatePeriodMillis
- * 30 mnt + render sistem saat widget ditambah/diubah ukuran).
- * Tap seluruh widget → MainActivity.
+ * Widget jadwal ForFH: kelas berikutnya + alarm berikutnya, dibaca dari Room tiap render
+ * (trigger: refreshAll dari 4 titik update + updatePeriodMillis 30 mnt + render sistem saat
+ * widget ditambah/diubah ukuran). Tap seluruh widget → MainActivity.
  */
 class ForfhWidget : GlanceAppWidget() {
 
@@ -45,15 +45,20 @@ class ForfhWidget : GlanceAppWidget() {
         val app = context.applicationContext as ForfhApp
         // Room blocking → Dispatchers.Default (global constraint). Baca gagal (jarang) → fallback
         // placeholder jujur (R-27 error state): widget tidak pernah menampilkan data yang tidak
-        // berasal dari Room.
+        // berasal dari Room. CancellationException (coroutine dibatalkan) di-rethrow — menelan
+        // pembatalan di sini membuat status pembatalan hilang dari struktur supervisi.
         val data = withContext(Dispatchers.Default) {
-            runCatching {
+            try {
                 val now = ZonedDateTime.now(WIB)
                 WidgetData(
                     nextClass = nextUp(app.container.schedulesDao.getEnabledOnce(), now),
                     nextAlarm = app.container.alarmsDao.nextClassAlarmOnce(now.toInstant().toEpochMilli()),
                 )
-            }.getOrNull() ?: WidgetData(nextClass = null, nextAlarm = null)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                WidgetData(nextClass = null, nextAlarm = null)
+            }
         }
         provideContent {
             ForfhWidgetTheme {
@@ -110,10 +115,10 @@ fun ForfhWidgetContent(
             },
             style = TextStyle(
                 // Glance 1.1.1 tidak punya TextOverflow/ellipsis (maxLines=1 hanya meng-clip).
-                // Mitigasi Task 3 minor #3: nama panjang (>14 karakter, biasanya saat courseCode
-                // null dan fallback ke courseName) dirender lebih kecil agar muat di baris 1;
-                // sisa yang lebih panjang dari kapasitas 14sp tetap ter-clip (keterbatasan API,
-                // baris tetap terbaca prefix-nya).
+                // Nama panjang (>14 karakter, biasanya saat courseCode null dan fallback ke
+                // courseName) dirender lebih kecil agar muat di baris 1; sisa yang lebih panjang
+                // dari kapasitas 14sp tetap ter-clip (keterbatasan API, baris tetap terbaca
+                // prefix-nya).
                 fontSize = if (name != null && name.length > 14) 14.sp else 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = GlanceTheme.colors.onSurface,

@@ -11,12 +11,12 @@ import java.time.format.DateTimeFormatter
 /**
  * Matematika notifikasi deadline tugas H-1 — murni, tanpa Android, bisa unit-test (pola AlarmPlanner).
  *
- * Semantik (spec Task 5): untuk tiap tugas aktif (status != DONE) dengan dueAt terparse,
+ * Semantik: untuk tiap tugas aktif (status != DONE) dengan dueAt terparse,
  *   - deadline besok (H-1) → row trigger HARI INI 20:00 WIB;
  *   - deadline hari ini → row trigger hari ini 20:00 WIB HANYA bila now masih sebelum 20:00
  *     (now >= 20:00 → skip: trigger di masa lalu / deadline hari ini sudah lewat);
  *   - deadline < hari ini atau > besok → tanpa row (H-1 saja).
- * Identity one-shot `taskdl|{taskId}|{deadlineDay}` — Task 6 memasangnya lewat ReconcilePlanner.
+ * Identity one-shot `taskdl|{taskId}|{deadlineDay}` — dipasang lewat ReconcilePlanner.
  */
 class TaskDeadlinePlanner(private val zone: ZoneId = ZoneId.of("Asia/Jakarta")) {
 
@@ -39,7 +39,7 @@ class TaskDeadlinePlanner(private val zone: ZoneId = ZoneId.of("Asia/Jakarta")) 
     }
 
     fun computeTasks(tasks: List<TaskEntity>, now: ZonedDateTime): List<ScheduledAlarmEntity> {
-        val today = now.toLocalDate()
+        val today = now.withZoneSameInstant(zone).toLocalDate()
         val tomorrow = today.plusDays(1)
         val triggerAtMillis = today.atTime(DEADLINE_HOUR, 0).atZone(zone).toInstant().toEpochMilli()
         val nowMs = now.toInstant().toEpochMilli()

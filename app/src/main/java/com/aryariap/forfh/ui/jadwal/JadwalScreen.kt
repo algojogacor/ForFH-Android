@@ -49,10 +49,13 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
     val nextUp by nextUpViewModel.state.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
 
-    // Ticker kartu "Berikutnya" (Task 2): refresh 30 dtk. Akurasi menit cukup untuk countdown,
-    // hemat baterai (bukan 1 dtk). Ticker di UI, ViewModel hanya menyediakan refresh().
-    // Berhenti otomatis saat layar ini keluar komposisi (pindah tab).
-    LaunchedEffect(Unit) {
+    // Ticker kartu "Berikutnya": refresh 30 dtk HANYA di tab "Hari ini" (tab 0) — countdown
+    // ada di tab itu, tab "Seminggu" tidak menampilkan waktu real-time jadi tak perlu refresh
+    // berkala. Akurasi menit cukup untuk countdown, hemat baterai (bukan 1 dtk). Ticker di UI,
+    // ViewModel hanya menyediakan refresh(). Berhenti otomatis saat layar keluar komposisi;
+    // ganti tab → efek di-cancel & restart, jadi kembali ke tab 0 langsung refresh sekali.
+    LaunchedEffect(tab) {
+        if (tab != 0) return@LaunchedEffect
         while (isActive) {
             nextUpViewModel.refresh()
             delay(30_000)
@@ -117,9 +120,9 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
 }
 
 /**
- * Kartu "Berikutnya" (V1.1 Task 2): kelas berikutnya + countdown (start WIB, ruling R5),
- * alarm berikutnya, dan quick mute "hari ini" (pola PengaturanScreen). Pemanggil hanya
- * mengomposisikan kartu saat ada data; baris di dalamnya opsional.
+ * Kartu "Berikutnya": kelas berikutnya + countdown (start WIB, ruling R5), alarm berikutnya,
+ * dan quick mute "hari ini" (pola PengaturanScreen). Pemanggil hanya mengomposisikan kartu
+ * saat ada data; baris di dalamnya opsional.
  */
 @Composable
 private fun NextUpCard(state: NextUpUiState, onMute: () -> Unit, onUnmute: () -> Unit) {
@@ -168,13 +171,13 @@ private fun NextUpCard(state: NextUpUiState, onMute: () -> Unit, onUnmute: () ->
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                // Tombol mute kecil (pola PengaturanScreen, teks singkat versi kartu):
-                // "Aktifkan lagi" saat sedang mute; "Matikan alarm hari ini" hanya saat ada
-                // alarm untuk dimatikan (tanpa alarm, tombol mute adalah kontrol mati).
+                // Tombol mute kecil (pola PengaturanScreen, teks sama persis): "Aktifkan lagi
+                // alarm hari ini" saat sedang mute; "Matikan seluruh alarm hari ini" hanya saat
+                // ada alarm untuk dimatikan (tanpa alarm, tombol mute adalah kontrol mati).
                 if (state.mutedToday) {
-                    TextButton(onClick = onUnmute) { Text("Aktifkan lagi") }
+                    TextButton(onClick = onUnmute) { Text("Aktifkan lagi alarm hari ini") }
                 } else if (state.nextAlarm != null) {
-                    TextButton(onClick = onMute) { Text("Matikan alarm hari ini") }
+                    TextButton(onClick = onMute) { Text("Matikan seluruh alarm hari ini") }
                 }
             }
         }

@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <!-- T9: layer alarm di atas lock screen -->
+        <!-- Full-screen alarm (USE_FULL_SCREEN_INTENT): layer alarm di atas lock screen -->
         <activity
             android:name=".alarm.FullScreenAlarmActivity"
             android:excludeFromRecents="true"
@@ -36,12 +36,13 @@
             android:taskAffinity=""
             android:theme="@style/Theme.ForFH.Alarm" />
 
-        <!-- T7: trigger alarm kuliah + tugas (intent eksplisit dari PendingIntent) -->
+        <!-- Trigger alarm kuliah + tugas (intent eksplisit dari PendingIntent) -->
         <receiver
             android:name=".alarm.AlarmReceiver"
             android:exported="false" />
 
-        <!-- T11: recovery boot & package-replaced (non-directBootAware; exported=false aman utk protected broadcast sistem) -->
+        <!-- Recovery alarm pasca boot & package-replaced (non-directBootAware; exported=false
+             aman utk protected broadcast sistem) -->
         <receiver
             android:name=".sync.BootReceiver"
             android:exported="false">
@@ -51,7 +52,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- T11: exact access dikembalikan setelah dicabut -->
+        <!-- Exact access dikembalikan setelah dicabut (broadcast sistem SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) -->
         <receiver
             android:name=".sync.ExactAlarmPermissionReceiver"
             android:exported="false">
@@ -60,7 +61,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- T3: widget jadwal (Glance). exported=true + BIND_APPWIDGET: hanya sistem yang bisa
+        <!-- Widget jadwal (Glance). exported=true + BIND_APPWIDGET: hanya sistem yang bisa
              mengirim APPWIDGET_UPDATE (framework AppWidget), aman untuk launcher OEM (HyperOS). -->
         <receiver
             android:name=".widget.ForfhWidgetProvider"
