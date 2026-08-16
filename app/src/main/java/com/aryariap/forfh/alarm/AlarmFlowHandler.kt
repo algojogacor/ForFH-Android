@@ -85,9 +85,11 @@ class AlarmFlowHandler(
     }
 
     /**
-     * TASK_DEADLINE: one-shot per tugas → row masih ada + trigger cocok → notif biasa (bukan
-     * full-screen) → row DIHAPUS (fire → hilang); reconcile membangun ulang H-1 utk hari berikutnya.
-     * Tidak lewat ReceiverGuard — pola TASK_REMINDER (guard receiver khusus jalur CLASS_ALARM).
+     * TASK_DEADLINE: one-shot per tugas → guard berlapis di DeadlineDecision (murni, teruji —
+     * pola TASK_REMINDER, tidak lewat ReceiverGuard yang khusus jalur CLASS_ALARM):
+     * Fire → notif biasa (bukan full-screen) lalu row DIHAPUS; CancelSilently → row dihapus
+     * tanpa tampil (logout / tugas hilang / DONE); Ignore → intent stale, tak disentuh.
+     * Reconcile membangun ulang row H-1 utk hari berikutnya.
      */
     suspend fun handleTaskDeadline(intent: Intent) {
         val extras = AlarmFlowExtras.parseDeadlineExtras(
@@ -95,25 +97,24 @@ class AlarmFlowHandler(
             occurrenceDate = intent.getStringExtra("occurrenceDate"),
             triggerStr = intent.getStringExtra("triggerAtMillis"),
         ) ?: return
-        val deadlineDay = LocalDate.parse(extras.occurrenceDate)
-        val identity = TaskDeadlinePlanner.taskDeadlineIdentity(extras.taskId, deadlineDay)
-        val row = alarmsDao.getByIdOnce(identity) ?: return
-        if (row.triggerAtMillis != extras.triggerAtMillis) return
-        if (!sessionManager.isLoggedIn()) { // defense-in-depth pasca-logout
-            rescheduler.cancelAlarm(identity)
-            return
+        val identity = TaskDeadlinePlanner.taskDeadlineIdentity(extras.taskId, LocalDate.parse(extras.occurrenceDate))
+        when (val action = DeadlineDecision.decide(
+            extras = extras,
+            row = alarmsDao.getByIdOnce(identity),
+            isLoggedIn = sessionManager.isLoggedIn(),
+            task = tasksDao.getByIdOnce(extras.taskId),
+            today = LocalDate.now(zone),
+        )) {
+            is DeadlineAction.Fire -> {
+                if (notifications.hasPermission()) {
+                    notifications.showTaskDeadline(action.text, extras.taskId, extras.occurrenceDate)
+                }
+                // one-shot per plan: fire → row hilang (bukan di-replace seperti slot tugas)
+                rescheduler.cancelAlarm(identity)
+            }
+            DeadlineAction.CancelSilently -> rescheduler.cancelAlarm(identity)
+            DeadlineAction.Ignore -> Unit // row tak ada / trigger basi — jangan sentuh apa pun
         }
-        val task = tasksDao.getByIdOnce(extras.taskId)
-        if (task == null || task.status == "DONE") { // tugas hilang/selesai di sync → one-shot dibatalkan
-            rescheduler.cancelAlarm(identity)
-            return
-        }
-        val text = TaskDeadlineText.build(task, deadlineDay, LocalDate.now(zone))
-        if (notifications.hasPermission()) {
-            notifications.showTaskDeadline(text, extras.taskId, extras.occurrenceDate)
-        }
-        // one-shot per plan: fire → row hilang (bukan di-replace seperti slot tugas)
-        rescheduler.cancelAlarm(identity)
     }
 
     /** Snooze dari FSI activity atau aksi notif: +3 menit, count++, update Room, reschedule (RTC_WAKEUP). */

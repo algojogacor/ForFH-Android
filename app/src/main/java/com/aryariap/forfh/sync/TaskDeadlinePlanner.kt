@@ -34,7 +34,7 @@ class TaskDeadlinePlanner(private val zone: ZoneId = ZoneId.of("Asia/Jakarta")) 
          */
         fun taskIdFromIdentity(identity: String): String? {
             if (!identity.startsWith("$PREFIX|")) return null
-            return identity.removePrefix("$PREFIX|").substringBefore('|')
+            return identity.removePrefix("$PREFIX|").substringBefore('|').takeIf { it.isNotEmpty() }
         }
     }
 

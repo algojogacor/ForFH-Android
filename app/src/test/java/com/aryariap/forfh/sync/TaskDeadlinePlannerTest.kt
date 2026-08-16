@@ -133,7 +133,20 @@ class TaskDeadlinePlannerTest {
     }
 
     @Test
-    fun `identity helper - taskdl|taskId|yyyy-MM-dd`() {
+    fun `identity helper - taskdl taskId tanggal`() {
         assertEquals("taskdl|t1|2026-08-18", TaskDeadlinePlanner.taskDeadlineIdentity("t1", LocalDate.of(2026, 8, 18)))
+    }
+
+    @Test
+    fun `taskIdFromIdentity - hanya identity taskdl yang terresolve`() {
+        assertEquals("t1", TaskDeadlinePlanner.taskIdFromIdentity("taskdl|t1|2026-08-18"))
+        assertEquals(null, TaskDeadlinePlanner.taskIdFromIdentity("class|s1|120|2026-08-17"))
+        assertEquals(null, TaskDeadlinePlanner.taskIdFromIdentity("task|09|2026-08-16"))
+    }
+
+    @Test
+    fun `taskIdFromIdentity - taskId kosong - null bukan string kosong`() {
+        // identity malformed (tidak pernah dihasilkan planner) → null, bukan "" (extra taskId tidak dibuat)
+        assertEquals(null, TaskDeadlinePlanner.taskIdFromIdentity("taskdl||2026-08-18"))
     }
 }

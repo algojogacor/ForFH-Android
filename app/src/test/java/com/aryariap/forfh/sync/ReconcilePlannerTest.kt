@@ -140,7 +140,7 @@ class ReconcilePlannerTest {
 
     @Test
     fun `matikan alarm hari ini - row kelas hari itu tidak dibuat, task reminder dan TASK_DEADLINE tetap`() {
-        val now = wib("2026-08-15T10:00") // Sabtu
+        val now = wib("2026-08-17T10:00") // Senin; kelas hari ini dimatikan user
         val ops = planner.computeOps(
             emptyList(),
             listOf(sched(day = 1, start = "13:00")),
@@ -148,7 +148,9 @@ class ReconcilePlannerTest {
             now,
             fullRebuild = true,
             skipDates = setOf("2026-08-17"), // Senin dimatikan user
-            tasks = listOf(task("t1", wibEpoch(2026, 8, 16, 23, 59))), // deadline Minggu 16 (besok) — tdk boleh kena mute
+            // deadline HARI INI (Senin 17) — occurrenceDate row TASK_DEADLINE = tanggal yang di-mute;
+            // skipDates berisi tanggal row itu sendiri dan TIDAK boleh menghapusnya
+            tasks = listOf(task("t1", wibEpoch(2026, 8, 17, 23, 59))),
         )
         val classRows = ops.filterIsInstance<AlarmOp.Schedule>().filter { it.row.kind == "CLASS_ALARM" }.map { it.row }
         assertEquals(0, classRows.size)
@@ -157,7 +159,7 @@ class ReconcilePlannerTest {
         // TASK_DEADLINE juga TIDAK ikut dimatikan — mute hanya menyentuh CLASS_ALARM
         val deadlineRows = ops.filterIsInstance<AlarmOp.Schedule>().filter { it.row.kind == "TASK_DEADLINE" }.map { it.row }
         assertEquals(1, deadlineRows.size)
-        assertEquals("taskdl|t1|2026-08-16", deadlineRows.single().id)
+        assertEquals("taskdl|t1|2026-08-17", deadlineRows.single().id) // occurrenceDate = tanggal mute — tetap dibuat
     }
 
     @Test
@@ -265,6 +267,20 @@ class ReconcilePlannerTest {
         assertTrue(ops.filterIsInstance<AlarmOp.Schedule>().none { it.row.kind == "TASK_DEADLINE" })
         // pass cancel fullRebuild membersihkan row stale yang tersimpan
         assertTrue(ops.any { it is AlarmOp.Cancel && it.row.id == stale.id })
+    }
+
+    @Test
+    fun `R19 - non-fullRebuild - row trigger masa lalu tidak masuk desired dan tidak di-cancel`() {
+        val now = wib("2026-08-17T20:30") // Senin 20:30; deadline t1 besok (18) tapi jam notif sudah lewat
+        val stale = deadlineRow("taskdl|t1|2026-08-18", "2026-08-18", wibEpoch(2026, 8, 17, 20, 0))
+        val ops = planner.computeOps(
+            listOf(stale), emptyList(), emptyMap(), now, fullRebuild = false,
+            tasks = listOf(task("t1", wibEpoch(2026, 8, 18, 23, 59))),
+        )
+        // R19 tetap berlaku utk desired: tidak ada Schedule TASK_DEADLINE trigger masa lalu
+        assertTrue(ops.filterIsInstance<AlarmOp.Schedule>().none { it.row.kind == "TASK_DEADLINE" })
+        // tapi non-fullRebuild bukan ranah utk menghapus apa pun — row stale dibiarkan (semantik existing)
+        assertTrue(ops.none { it is AlarmOp.Cancel && it.row.id == stale.id })
     }
 
     @Test
