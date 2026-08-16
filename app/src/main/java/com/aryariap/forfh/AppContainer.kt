@@ -10,6 +10,8 @@ import com.aryariap.forfh.alarm.AlarmScheduler
 import com.aryariap.forfh.alarm.AndroidAlarmApi
 import com.aryariap.forfh.alarm.ForfhNotifications
 import com.aryariap.forfh.data.db.AppDatabase
+import com.aryariap.forfh.data.db.ScheduledAlarmsDao
+import com.aryariap.forfh.data.db.SchedulesDao
 import com.aryariap.forfh.data.prefs.Preferences
 import com.aryariap.forfh.data.prefs.SecureCookieStore
 import com.aryariap.forfh.data.prefs.SessionEvent
@@ -18,18 +20,34 @@ import com.aryariap.forfh.network.ApiClient
 import com.aryariap.forfh.network.ForfhApiService
 import com.aryariap.forfh.network.PersistentCookieJar
 import com.aryariap.forfh.sync.AlarmRescheduler
+import com.aryariap.forfh.sync.RescheduleAll
 import com.aryariap.forfh.sync.SyncRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-class AppContainer(private val app: ForfhApp) {
+/**
+ * Ketergantungan kartu "Berikutnya" (NextUpViewModel) — kontrak komposisi yang dipenuhi
+ * AppContainer; test memakai fake. Memakai seam RescheduleAll supaya quick mute bisa di-fake.
+ */
+interface NextUpContainer {
+    val schedulesDao: SchedulesDao
+    val alarmsDao: ScheduledAlarmsDao
+    val prefs: Preferences
+    val rescheduler: RescheduleAll
+    val planner: AlarmPlanner
+}
+
+class AppContainer(private val app: ForfhApp) : NextUpContainer {
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val context: android.content.Context get() = app
 
     val database: AppDatabase by lazy { AppDatabase.build(app) }
+
+    override val schedulesDao: SchedulesDao by lazy { database.schedulesDao() }
+    override val alarmsDao: ScheduledAlarmsDao by lazy { database.scheduledAlarmsDao() }
 
     private val dataStore: DataStore<CorePreferences> by lazy {
         PreferenceDataStoreFactory.create(
@@ -38,7 +56,7 @@ class AppContainer(private val app: ForfhApp) {
         )
     }
 
-    val prefs: Preferences by lazy { Preferences(dataStore) }
+    override val prefs: Preferences by lazy { Preferences(dataStore) }
     val secureCookieStore: SecureCookieStore by lazy { SecureCookieStore(dataStore) }
     val sessionManager: SessionManager by lazy { SessionManager(secureCookieStore) }
 
@@ -50,9 +68,9 @@ class AppContainer(private val app: ForfhApp) {
         ApiClient.retrofit(ApiClient.build(cookieJar, sessionManager))
     }
 
-    val planner: AlarmPlanner by lazy { AlarmPlanner() }
+    override val planner: AlarmPlanner by lazy { AlarmPlanner() }
     val scheduler: AlarmScheduler by lazy { AlarmScheduler(AndroidAlarmApi(app)) }
-    val rescheduler: AlarmRescheduler by lazy {
+    override val rescheduler: AlarmRescheduler by lazy {
         AlarmRescheduler(planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs)
     }
     val notifications: ForfhNotifications by lazy { ForfhNotifications(app) }

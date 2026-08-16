@@ -56,6 +56,9 @@ class AlarmReschedulerTest {
         override fun getAll(): Flow<List<ScheduledAlarmEntity>> = flowOf(rows.values.toList())
         override fun getAllOnce(): List<ScheduledAlarmEntity> = rows.values.toList()
         override fun getByIdOnce(id: String): ScheduledAlarmEntity? = rows[id]
+        override fun nextClassAlarmOnce(nowMs: Long): ScheduledAlarmEntity? =
+            rows.values.filter { it.kind == "CLASS_ALARM" && it.triggerAtMillis > nowMs }
+                .minByOrNull { it.triggerAtMillis }
         override fun upsert(row: ScheduledAlarmEntity) { rows[row.id] = row; writes += "upsert:${row.id}" }
         override fun deleteById(id: String) { rows.remove(id); writes += "delete:$id" }
         override fun clearAll() { rows.clear() }

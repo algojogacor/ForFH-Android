@@ -9,17 +9,22 @@ import kotlinx.coroutines.flow.first
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
+/** Seam untuk lapisan UI/ViewModel: reschedule penuh dari state Room + prefs (pola mute/unmute). */
+interface RescheduleAll {
+    suspend fun rescheduleAll()
+}
+
 class AlarmRescheduler(
     private val planner: AlarmPlanner,
     private val scheduler: AlarmScheduler,
     private val alarmsDao: ScheduledAlarmsDao,
     private val schedulesDao: SchedulesDao,
     private val prefs: Preferences,
-) {
+) : RescheduleAll {
     private val zone = ZoneId.of("Asia/Jakarta")
 
     /** Cancel semua yang obsolete lalu bangun ulang; sesi snooze aktif dipertahankan apa adanya (§8.1). */
-    suspend fun rescheduleAll() = execute(compute(fullRebuild = true))
+    override suspend fun rescheduleAll() = execute(compute(fullRebuild = true))
 
     /**
      * Boot/MY_PACKAGE_REPLACED (§8.9): AlarmManager KOSONG setelah reboot — re-arm SEMUA row Room.
