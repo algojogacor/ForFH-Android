@@ -1,6 +1,8 @@
 package com.aryariap.forfh.ui.info
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,19 +31,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.aryariap.forfh.ui.UiFormat
 
 /**
  * Layar Info (V1.1 Task 8): rekap presensi per MK (hadir/tm/persen — web tidak punya
  * izin/sakit/alpa, ruling R22) + kartu info kampus per jenis (dataJson mentah → label
- * Indonesia). Semua angka dari Room (R-17); state jujur per R-27: loading saat sync
- * berjalan TANPA data, error saat sync gagal TANPA data, terputus saat connected=false,
- * kosong saat belum pernah sync; dengan data lama tetap → konten + baris error.
+ * Indonesia). Semua angka dari Room (R-17); state jujur per R-27:
  *
- * Preferensi tampilan: saat data lama masih ada, data TETAP ditampilkan selama sync
- * berjalan/gagal (data lama yang nyata lebih berguna daripada layar kosong; Room flow
- * meng-update konten otomatis saat sync selesai). Spinner hanya saat tidak ada apa pun
- * untuk ditampilkan. Tiap state penuh punya TEPAT SATU tombol aksi (R-26).
+ * - QUEUED (worker menunggu jaringan) → banner kecil, BUKAN spinner layar penuh yang bisa
+ *   tampil tanpa batas; state di bawahnya (kosong/putus/error/konten) tetap terlihat
+ *   lengkap dengan aksinya (fix review).
+ * - RUNNING tanpa data → spinner layar penuh "Menyinkronkan data..."; dengan data →
+ *   konten tetap tampil (Room flow meng-update otomatis saat selesai).
+ * - Putus (connected=false) lebih fundamental daripada error transient: retry sync tidak
+ *   memperbaiki akun yang tidak terhubung — tunjukkan penyebab + aksinya.
+ * - Frame pertama (Room belum ter-emisi) → indikator "Memuat data...", bukan asumsi state
+ *   terminal (fix review: guard loaded).
+ *
+ * Tiap state penuh punya TEPAT SATU tombol aksi (R-26); tidak ada state tanpa jalan keluar.
  */
 @Composable
 fun InfoScreen(viewModel: InfoViewModel) {
@@ -56,79 +63,115 @@ fun InfoScreen(viewModel: InfoViewModel) {
             )
         },
     ) { padding ->
-        when {
-            state.loading && !hasData -> FullState(padding) {
-                CircularProgressIndicator()
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "Menyinkronkan data...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Worker menunggu jaringan (ENQUEUED): banner kecil non-blocking — state utama
+            // di bawahnya tetap terlihat, tidak ada spinner tanpa batas.
+            if (state.syncActivity == SyncActivity.QUEUED) {
+                QueuedBanner()
             }
-
-            // Putus lebih fundamental daripada error transient: retry sync tidak akan
-            // memperbaiki akun yang tidak terhubung — tunjukkan penyebab + aksinya.
-            state.connected == false -> FullState(padding) {
-                Text(
-                    text = "Kampus belum terhubung.",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Akun Kampus Kita belum terhubung di ForFH web. Hubungkan di web, lalu sinkronkan lagi.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                state.kampusLastSyncAt?.let { iso ->
-                    InfoFormat.formatUpdatedAt(iso)?.let { last ->
-                        Spacer(Modifier.height(4.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    !state.loaded -> FullState {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(12.dp))
                         Text(
-                            text = "Terakhir sinkron kampus: $last",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "Memuat data...",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+
+                    state.syncActivity == SyncActivity.RUNNING && !hasData -> FullState {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = "Menyinkronkan data...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    state.connected == false -> FullState {
+                        Text(
+                            text = "Kampus belum terhubung.",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Akun Kampus Kita belum terhubung di ForFH web. Hubungkan di web, lalu sinkronkan lagi.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        state.kampusLastSyncAt?.let { iso ->
+                            InfoFormat.formatUpdatedAt(iso)?.let { last ->
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Terakhir sinkron kampus: $last",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = viewModel::syncNow) { Text("Sinkronkan") }
+                    }
+
+                    state.error && !hasData -> FullState {
+                        Text(
+                            text = "Sinkronisasi gagal. Cek koneksi, lalu coba lagi.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = viewModel::syncNow) { Text("Coba lagi") }
+                    }
+
+                    !hasData -> FullState {
+                        Text(
+                            text = "Belum ada data. Sinkronkan dulu.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = viewModel::syncNow) { Text("Sinkronkan") }
+                    }
+
+                    else -> InfoContent(state = state, onSync = viewModel::syncNow)
                 }
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = viewModel::syncNow) { Text("Sinkronkan") }
             }
-
-            state.error && !hasData -> FullState(padding) {
-                Text(
-                    text = "Sinkronisasi gagal. Cek koneksi, lalu coba lagi.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = viewModel::syncNow) { Text("Coba lagi") }
-            }
-
-            !hasData -> FullState(padding) {
-                Text(
-                    text = "Belum ada data. Sinkronkan dulu.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = viewModel::syncNow) { Text("Sinkronkan") }
-            }
-
-            else -> InfoContent(state = state, onSync = viewModel::syncNow, padding = padding)
         }
+    }
+}
+
+/** Banner kecil: worker sync menunggu jaringan — jujur, bukan klaim "sedang sinkron". */
+@Composable
+private fun QueuedBanner() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = "Menunggu jaringan untuk sinkron...",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f), // melipat, bukan overflow, di layar sempit (R-03)
+        )
     }
 }
 
 /** Wrapper state penuh (loading/error/putus/kosong): konten di tengah layar. */
 @Composable
 private fun FullState(
-    padding: PaddingValues,
     content: @Composable () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(padding)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -138,9 +181,9 @@ private fun FullState(
 }
 
 @Composable
-private fun InfoContent(state: InfoUiState, onSync: () -> Unit, padding: PaddingValues) {
+private fun InfoContent(state: InfoUiState, onSync: () -> Unit) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(padding),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -169,9 +212,11 @@ private fun InfoContent(state: InfoUiState, onSync: () -> Unit, padding: Padding
             items(state.cards) { card -> InfoKampusCard(card) }
         }
 
+        // Footer umur data kampus (meta.lastSyncAt) — bukan waktu sync jadwal/tugas, dan
+        // tanpa em dash (fix review; UiFormat.syncInfo dibiarkan untuk layar lain).
         item {
             Text(
-                text = "Terakhir sinkron: ${UiFormat.syncInfo(state.lastSyncStatus, state.lastSyncAt)}",
+                text = InfoFormat.kampusUpdatedText(state.kampusLastSyncAt),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),

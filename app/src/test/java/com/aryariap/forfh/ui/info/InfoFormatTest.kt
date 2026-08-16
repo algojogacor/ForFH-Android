@@ -91,6 +91,16 @@ class InfoFormatTest {
         assertNull(InfoFormat.formatUpdatedAt("2026-08-17"))
     }
 
+    @Test
+    fun `kampusUpdatedText - footer umur data kampus, tanpa em dash`() {
+        assertEquals(
+            "Info terakhir diperbarui 17 Agu 2026, 11:05",
+            InfoFormat.kampusUpdatedText("2026-08-17T04:05:06.123Z"),
+        )
+        assertEquals("Info kampus belum pernah diperbarui", InfoFormat.kampusUpdatedText(null))
+        assertEquals("Info kampus belum pernah diperbarui", InfoFormat.kampusUpdatedText("rusak"))
+    }
+
     // ---------- parse dataJson ----------
 
     @Test

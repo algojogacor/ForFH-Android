@@ -27,6 +27,7 @@ import com.aryariap.forfh.sync.RescheduleAll
 import com.aryariap.forfh.sync.SyncRepository
 import com.aryariap.forfh.sync.SyncWorker
 import com.aryariap.forfh.ui.info.InfoContainer
+import com.aryariap.forfh.ui.info.SyncActivity
 import com.aryariap.forfh.widget.refreshAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -93,14 +94,19 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer {
 
     // ---- InfoContainer (layar Info, Task 8) ----
     override val lastSyncStatus: Flow<String> get() = prefs.lastSyncStatus
-    override val lastSyncAt: Flow<Long> get() = prefs.lastSyncAt
 
-    /** Sinyal "sync sedang berjalan/menunggu" dari unique work "sync_once" (WorkManager). */
-    override val syncRunning: Flow<Boolean> by lazy {
+    /**
+     * Aktivitas worker sync (unique work "sync_once"): RUNNING saat benar-benar berjalan,
+     * QUEUED saat menunggu jaringan (ENQUEUED — bisa menunggu tanpa batas, jadi layar
+     * memperlakukannya sebagai banner, bukan spinner layar penuh; fix review).
+     */
+    override val syncActivity: Flow<SyncActivity> by lazy {
         WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(SyncWorker.UNIQUE_SYNC_ONCE)
             .map { infos ->
-                infos.any {
-                    it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING
+                when {
+                    infos.any { it.state == WorkInfo.State.RUNNING } -> SyncActivity.RUNNING
+                    infos.any { it.state == WorkInfo.State.ENQUEUED } -> SyncActivity.QUEUED
+                    else -> SyncActivity.IDLE
                 }
             }
             .distinctUntilChanged()

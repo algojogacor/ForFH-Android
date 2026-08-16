@@ -102,6 +102,15 @@ object InfoFormat {
     }.getOrNull()
 
     /**
+     * Footer layar Info: umur data kampus dari meta.lastSyncAt (bukan waktu sync jadwal/tugas,
+     * dan tanpa em dash — fix review). Tanggal tak bisa diparse / belum pernah → teks jujur.
+     */
+    fun kampusUpdatedText(lastSyncAt: String?): String {
+        val formatted = lastSyncAt?.let { formatUpdatedAt(it) }
+        return if (formatted != null) "Info terakhir diperbarui $formatted" else "Info kampus belum pernah diperbarui"
+    }
+
+    /**
      * dataJson (array baris mentah UPPERCASE_SNAKE) → blok label:nilai per record.
      * Nilai null/"" dilewati (kosong lebih jujur daripada placeholder), record non-object
      * atau tanpa satu pun nilai dilewati. Batas maxRecords per jenis (pola web: cap 50 baris)

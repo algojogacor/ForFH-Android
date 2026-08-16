@@ -112,8 +112,8 @@ class SyncRepositoryTest {
     private fun okSchedules() = Response.success(200, SchedulesResponse(listOf(newSchedule())))
     private fun okTasks() = Response.success(200, TasksResponse(listOf(newTask())))
 
-    private fun repo(api: FakeApi, infoDao: FakeKampusInfoDao) =
-        SyncRepository(api, FakeSchedulesDao(), FakeTasksDao(), FakeState(), infoDao)
+    private fun repo(api: FakeApi, infoDao: FakeKampusInfoDao, state: FakeState = FakeState()) =
+        SyncRepository(api, FakeSchedulesDao(), FakeTasksDao(), state, infoDao)
 
     @Test
     fun `sync sukses - wipe and replace kedua tabel dan state ok`() = runTest {
@@ -198,14 +198,16 @@ class SyncRepositoryTest {
     @Test
     fun `campus info HTTP error - sync tetap Success dan snapshot TIDAK disimpan`() = runTest {
         val infoDao = FakeKampusInfoDao()
+        val state = FakeState()
         val api = FakeApi(
             scheduleResponse = okSchedules(),
             tasksResponse = okTasks(),
             campusInfoResponse = Response.error(500, okhttp3.ResponseBody.create(null, "{}")),
         )
-        val out = repo(api, infoDao).sync()
+        val out = repo(api, infoDao, state).sync()
 
         assertTrue(out is SyncOutcome.Success)
+        assertEquals("ok", state.status) // kegagalan campus info TIDAK menyentuh status sync utama
         assertEquals(1, api.campusInfoCalls)
         assertTrue(infoDao.snapshots.isEmpty())
     }
@@ -213,11 +215,13 @@ class SyncRepositoryTest {
     @Test
     fun `campus info network error - sync tetap Success dan snapshot TIDAK disimpan`() = runTest {
         val infoDao = FakeKampusInfoDao()
+        val state = FakeState()
         val api = FakeApi(scheduleResponse = okSchedules(), tasksResponse = okTasks())
         api.campusInfoError = IOException("no network")
-        val out = repo(api, infoDao).sync()
+        val out = repo(api, infoDao, state).sync()
 
         assertTrue(out is SyncOutcome.Success)
+        assertEquals("ok", state.status) // kegagalan campus info TIDAK menyentuh status sync utama
         assertEquals(1, api.campusInfoCalls)
         assertTrue(infoDao.snapshots.isEmpty())
     }

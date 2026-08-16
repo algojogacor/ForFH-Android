@@ -15,18 +15,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
+ * Aktivitas worker sync (unique work "sync_once"). Layar Info membedakan QUEUED
+ * (ENQUEUED — menunggu jaringan/constraint, bisa menunggu tanpa batas) dari RUNNING
+ * (benar-benar berjalan): yang pertama adalah banner kecil, bukan spinner layar penuh.
+ */
+enum class SyncActivity { IDLE, QUEUED, RUNNING }
+
+/**
  * Ketergantungan layar Info — dipenuhi AppContainer; test memakai fake (pola NextUpContainer).
- * Hanya yang benar-benar dipakai ViewModel yang diekspos: DAO kampus, status sync (prefs),
- * sinyal "sync sedang berjalan" (WorkManager), dan aksi enqueue sync.
+ * Hanya yang benar-benar dipakai ViewModel yang diekspos: DAO kampus, status sync terakhir
+ * (prefs, untuk flag error), aktivitas worker sync (WorkManager), dan aksi enqueue sync.
  */
 interface InfoContainer {
     val kampusInfoDao: KampusInfoDao
     /** Status sync terakhir "ok"/"error"/"" (DataStore, sama seperti layar lain). */
     val lastSyncStatus: Flow<String>
-    /** Waktu sync terakhir (epoch ms). */
-    val lastSyncAt: Flow<Long>
-    /** true saat worker sync berjalan/menunggu (produksi: unique work "sync_once"). */
-    val syncRunning: Flow<Boolean>
+    /** Aktivitas worker sync: QUEUED = menunggu jaringan, RUNNING = berjalan. */
+    val syncActivity: Flow<SyncActivity>
     /** Sinkron sekarang: enqueue one-shot (pola PengaturanViewModel.syncNow). */
     val enqueueSync: () -> Unit
 }
@@ -54,9 +59,14 @@ data class InfoUiState(
     /** lastSyncAt kampus dari server (ISO-8601, null saat belum pernah). */
     val kampusLastSyncAt: String? = null,
     val lastSyncStatus: String = "",
-    val lastSyncAt: Long = 0L,
-    /** true saat worker sync berjalan/menunggu (WorkManager unique work "sync_once"). */
-    val loading: Boolean = false,
+    /**
+     * false = emisi Room pertama belum datang (meta belum terbaca). Guard frame pertama:
+     * sebelum meta ter-emisi, null belum bisa dibedakan "belum pernah sync" vs "belum
+     * terbaca" — render state terminal (kosong/putus) hanya setelah loaded (fix review).
+     */
+    val loaded: Boolean = false,
+    /** Aktivitas worker sync (IDLE = tidak ada work yang berjalan/menunggu). */
+    val syncActivity: SyncActivity = SyncActivity.IDLE,
     /** lastSyncStatus == "error" — sync terakhir gagal. */
     val error: Boolean = false,
 )
@@ -83,6 +93,7 @@ class InfoViewModel(
                     presensi.map { it.toRow() } to info.map { it.toCard() }
                 }
                 _state.value = _state.value.copy(
+                    loaded = true,
                     presensi = rows,
                     cards = cards,
                     connected = meta?.connected,
@@ -96,10 +107,7 @@ class InfoViewModel(
             }
         }
         viewModelScope.launch {
-            container.lastSyncAt.collect { t -> _state.value = _state.value.copy(lastSyncAt = t) }
-        }
-        viewModelScope.launch {
-            container.syncRunning.collect { running -> _state.value = _state.value.copy(loading = running) }
+            container.syncActivity.collect { a -> _state.value = _state.value.copy(syncActivity = a) }
         }
     }
 

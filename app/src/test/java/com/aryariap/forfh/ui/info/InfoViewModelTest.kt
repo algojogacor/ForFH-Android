@@ -76,9 +76,8 @@ class InfoViewModelTest {
 
     private class FakeInfoContainer(
         override val kampusInfoDao: KampusInfoDao,
-        override val syncRunning: Flow<Boolean> = MutableStateFlow(false),
+        override val syncActivity: Flow<SyncActivity> = MutableStateFlow(SyncActivity.IDLE),
         override val lastSyncStatus: Flow<String> = MutableStateFlow(""),
-        override val lastSyncAt: Flow<Long> = MutableStateFlow(0L),
         var enqueueCalls: Int = 0,
     ) : InfoContainer {
         override val enqueueSync: () -> Unit = { enqueueCalls++ }
@@ -140,10 +139,26 @@ class InfoViewModelTest {
         advanceUntilIdle()
 
         val s = viewModel.state.value
+        assertTrue(s.loaded)
         assertTrue(s.presensi.isEmpty())
         assertTrue(s.cards.isEmpty())
         assertNull(s.connected)
         assertNull(s.kampusLastSyncAt)
+    }
+
+    @Test
+    fun `loaded - false sebelum emisi Room pertama, true setelahnya (guard frame pertama)`() = runTest(dispatcher) {
+        val dao = FakeKampusInfoDao(initialMeta = KampusMetaEntity(1, connected = false, lastSyncAt = null))
+        val viewModel = vm(FakeInfoContainer(dao))
+
+        // Collector belum jalan di test scheduler → belum ada emisi → JANGAN render state
+        // terminal (user yang terputus tidak boleh sempat melihat "Belum ada data").
+        assertFalse(viewModel.state.value.loaded)
+
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.loaded)
+        assertEquals(false, viewModel.state.value.connected)
     }
 
     @Test
@@ -162,20 +177,24 @@ class InfoViewModelTest {
     }
 
     @Test
-    fun `loading - true saat sync berjalan, false setelah selesai`() = runTest(dispatcher) {
-        val running = MutableStateFlow(false)
-        val viewModel = vm(FakeInfoContainer(FakeKampusInfoDao(), syncRunning = running))
+    fun `syncActivity - IDLE, QUEUED saat menunggu jaringan, RUNNING saat berjalan`() = runTest(dispatcher) {
+        val activity = MutableStateFlow(SyncActivity.IDLE)
+        val viewModel = vm(FakeInfoContainer(FakeKampusInfoDao(), syncActivity = activity))
 
         advanceUntilIdle()
-        assertFalse(viewModel.state.value.loading)
+        assertEquals(SyncActivity.IDLE, viewModel.state.value.syncActivity)
 
-        running.value = true
+        activity.value = SyncActivity.QUEUED
         advanceUntilIdle()
-        assertTrue(viewModel.state.value.loading)
+        assertEquals(SyncActivity.QUEUED, viewModel.state.value.syncActivity)
 
-        running.value = false
+        activity.value = SyncActivity.RUNNING
         advanceUntilIdle()
-        assertFalse(viewModel.state.value.loading)
+        assertEquals(SyncActivity.RUNNING, viewModel.state.value.syncActivity)
+
+        activity.value = SyncActivity.IDLE
+        advanceUntilIdle()
+        assertEquals(SyncActivity.IDLE, viewModel.state.value.syncActivity)
     }
 
     @Test
