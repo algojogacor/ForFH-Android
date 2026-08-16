@@ -6,6 +6,7 @@ import com.aryariap.forfh.data.db.AppDatabase
 import com.aryariap.forfh.data.prefs.Preferences
 import com.aryariap.forfh.data.prefs.SessionManager
 import com.aryariap.forfh.sync.AlarmRescheduler
+import com.aryariap.forfh.sync.TaskDeadlinePlanner
 import kotlinx.coroutines.CoroutineScope
 import java.time.LocalDate
 import java.time.ZoneId
@@ -81,6 +82,38 @@ class AlarmFlowHandler(
         }
         // one-shot: selesai tampil → row besok (spec §8.7)
         rescheduler.replaceTaskSlotRow(slotHour, ZonedDateTime.now(zone))
+    }
+
+    /**
+     * TASK_DEADLINE: one-shot per tugas → row masih ada + trigger cocok → notif biasa (bukan
+     * full-screen) → row DIHAPUS (fire → hilang); reconcile membangun ulang H-1 utk hari berikutnya.
+     * Tidak lewat ReceiverGuard — pola TASK_REMINDER (guard receiver khusus jalur CLASS_ALARM).
+     */
+    suspend fun handleTaskDeadline(intent: Intent) {
+        val extras = AlarmFlowExtras.parseDeadlineExtras(
+            taskId = intent.getStringExtra("taskId"),
+            occurrenceDate = intent.getStringExtra("occurrenceDate"),
+            triggerStr = intent.getStringExtra("triggerAtMillis"),
+        ) ?: return
+        val deadlineDay = LocalDate.parse(extras.occurrenceDate)
+        val identity = TaskDeadlinePlanner.taskDeadlineIdentity(extras.taskId, deadlineDay)
+        val row = alarmsDao.getByIdOnce(identity) ?: return
+        if (row.triggerAtMillis != extras.triggerAtMillis) return
+        if (!sessionManager.isLoggedIn()) { // defense-in-depth pasca-logout
+            rescheduler.cancelAlarm(identity)
+            return
+        }
+        val task = tasksDao.getByIdOnce(extras.taskId)
+        if (task == null || task.status == "DONE") { // tugas hilang/selesai di sync → one-shot dibatalkan
+            rescheduler.cancelAlarm(identity)
+            return
+        }
+        val text = TaskDeadlineText.build(task, deadlineDay, LocalDate.now(zone))
+        if (notifications.hasPermission()) {
+            notifications.showTaskDeadline(text, extras.taskId, extras.occurrenceDate)
+        }
+        // one-shot per plan: fire → row hilang (bukan di-replace seperti slot tugas)
+        rescheduler.cancelAlarm(identity)
     }
 
     /** Snooze dari FSI activity atau aksi notif: +3 menit, count++, update Room, reschedule (RTC_WAKEUP). */

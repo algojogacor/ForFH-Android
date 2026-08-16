@@ -15,6 +15,9 @@ interface TasksDao {
     @Query("SELECT * FROM tasks WHERE id = :id")
     fun getById(id: String): Flow<TaskEntity?>
 
+    @Query("SELECT * FROM tasks WHERE id = :id")
+    fun getByIdOnce(id: String): TaskEntity?
+
     @Query("SELECT * FROM tasks")
     fun getAllOnce(): List<TaskEntity>
 

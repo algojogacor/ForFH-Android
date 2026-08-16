@@ -41,6 +41,7 @@ class SyncRepositoryTest {
         override fun getAll(): Flow<List<TaskEntity>> = MutableStateFlow(items)
         override fun getById(id: String): Flow<TaskEntity?> = MutableStateFlow(items.firstOrNull { it.id == id })
         override fun getAllOnce(): List<TaskEntity> = items
+        override fun getByIdOnce(id: String): TaskEntity? = items.firstOrNull { it.id == id }
         override fun getActiveByDeadline(): List<TaskEntity> = items.filter { it.status != "DONE" }
             .sortedWith(compareBy<TaskEntity> { it.dueAt ?: Long.MAX_VALUE })
         override fun getDueTasksOnce(fromMillis: Long, toMillis: Long): List<TaskEntity> =

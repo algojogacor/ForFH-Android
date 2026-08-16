@@ -74,6 +74,7 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer {
     override val rescheduler: AlarmRescheduler by lazy {
         AlarmRescheduler(
             planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs,
+            database.tasksDao(),
             // Task 4: setelah reschedule alarm (sync sukses, mute/unmute, offset, exact-restore)
             // widget ikut di-refresh; kegagalan refresh non-fatal (refreshAll menelan sendiri).
             onAlarmsChanged = { refreshAll(app) },

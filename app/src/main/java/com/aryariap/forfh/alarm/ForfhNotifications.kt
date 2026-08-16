@@ -135,6 +135,31 @@ class ForfhNotifications(private val context: Context) {
         NotificationManagerCompat.from(context).notify(StableHash.of("task|$slotHour|$date"), notif)
     }
 
+    /**
+     * Deadline tugas H-1: notif biasa (bukan full-screen), tap → halaman Tugas.
+     * R2: pakai channel tugas existing CHANNEL_TASK — tanpa channel baru.
+     */
+    fun showTaskDeadline(text: String, taskId: String, date: String) {
+        ensureChannels()
+        val intent = Intent(context, com.aryariap.forfh.MainActivity::class.java)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            .putExtra("open_tasks", true)
+        val pi = PendingIntent.getActivity(
+            context, StableHash.of("taskdl|$taskId|$date"), intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notif = NotificationCompat.Builder(context, CHANNEL_TASK)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
+            .setContentTitle("Deadline tugas")
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .build()
+        NotificationManagerCompat.from(context).notify(StableHash.of("taskdl|$taskId|$date"), notif)
+    }
+
     companion object {
         const val CHANNEL_CLASS = "alarm_kuliah"
         const val CHANNEL_TASK = "reminder_tugas"

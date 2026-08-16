@@ -4,6 +4,7 @@ import com.aryariap.forfh.alarm.AlarmPlanner
 import com.aryariap.forfh.alarm.AlarmScheduler
 import com.aryariap.forfh.data.db.ScheduledAlarmsDao
 import com.aryariap.forfh.data.db.SchedulesDao
+import com.aryariap.forfh.data.db.TasksDao
 import com.aryariap.forfh.data.prefs.Preferences
 import kotlinx.coroutines.flow.first
 import java.time.ZoneId
@@ -20,6 +21,8 @@ class AlarmRescheduler(
     private val alarmsDao: ScheduledAlarmsDao,
     private val schedulesDao: SchedulesDao,
     private val prefs: Preferences,
+    /** Task 6: kandidat notifikasi deadline H-1 (TaskDeadlinePlanner lewat ReconcilePlanner). */
+    private val tasksDao: TasksDao,
     /** Task 4: dipanggil setelah execute() selesai (refresh widget; default no-op agar test lama utuh). */
     private val onAlarmsChanged: suspend () -> Unit = {},
 ) : RescheduleAll {
@@ -76,6 +79,12 @@ class AlarmRescheduler(
 
     private suspend fun compute(fullRebuild: Boolean): List<AlarmOp> {
         val now = ZonedDateTime.now(zone)
+        // Kandidat deadline H-1: dueAt dalam [hari ini 00:00 WIB, lusa 00:00 WIB) — mencakup
+        // deadline hari ini DAN besok secara penuh (half-open, kontrak TasksDao.getDueTasksOnce).
+        // Planner murni yang memutuskan H-1; query hanya mempersempit kandidat.
+        val today = now.toLocalDate()
+        val from = today.atStartOfDay(zone).toInstant().toEpochMilli()
+        val to = today.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
         return ReconcilePlanner(planner).computeOps(
             current = alarmsDao.getAllOnce(),
             schedules = schedulesDao.getEnabledOnce(),
@@ -85,6 +94,7 @@ class AlarmRescheduler(
             // "Matikan seluruh alarm hari ini": tanggal disimpan DataStore, alarm kelas hari itu
             // ditiadakan + row snooze aktif ikut di-cancel; basi otomatis saat ganti hari.
             skipDates = prefs.mutedDate.first()?.let { setOf(it) } ?: emptySet(),
+            tasks = tasksDao.getDueTasksOnce(from, to),
         )
     }
 

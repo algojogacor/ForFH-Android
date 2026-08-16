@@ -27,6 +27,15 @@ class TaskDeadlinePlanner(private val zone: ZoneId = ZoneId.of("Asia/Jakarta")) 
 
         fun taskDeadlineIdentity(taskId: String, deadlineDay: LocalDate): String =
             "$PREFIX|$taskId|${deadlineDay.format(DATE_FMT)}"
+
+        /**
+         * Balik arah: taskId dari identity `taskdl|{taskId}|{date}` — dipakai AlarmScheduler
+         * utk extra taskId (receiver tahu tugas mana tanpa menebak-nebak). Identity lain → null.
+         */
+        fun taskIdFromIdentity(identity: String): String? {
+            if (!identity.startsWith("$PREFIX|")) return null
+            return identity.removePrefix("$PREFIX|").substringBefore('|')
+        }
     }
 
     fun computeTasks(tasks: List<TaskEntity>, now: ZonedDateTime): List<ScheduledAlarmEntity> {
