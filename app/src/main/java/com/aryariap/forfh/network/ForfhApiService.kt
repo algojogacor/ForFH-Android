@@ -19,4 +19,8 @@ interface ForfhApiService {
 
     @PUT("api/tasks/{id}")
     suspend fun markDone(@Path("id") id: String, @Body body: MarkDoneRequest): Response<SuccessResponse>
+
+    /** Info kampus + rekap presensi sekaligus (campusData web) — cookie-jar session auth. */
+    @GET("api/campus/info")
+    suspend fun campusInfo(): Response<KampusInfoEnvelopeDto>
 }

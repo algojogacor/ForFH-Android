@@ -5,6 +5,7 @@ import com.aryariap.forfh.data.db.SchedulesDao
 import com.aryariap.forfh.data.db.TaskEntity
 import com.aryariap.forfh.data.db.TasksDao
 import com.aryariap.forfh.network.ForfhApiService
+import com.aryariap.forfh.network.KampusInfoEnvelopeDto
 import com.aryariap.forfh.network.LoginRequest
 import com.aryariap.forfh.network.LoginResponse
 import com.aryariap.forfh.network.MarkDoneRequest
@@ -65,6 +66,8 @@ class SyncRepositoryTest {
         override suspend fun tasks(): Response<TasksResponse> = tasksResponse
         override suspend fun markDone(id: String, body: MarkDoneRequest): Response<SuccessResponse> =
             Response.success(200, SuccessResponse(true, id))
+        override suspend fun campusInfo(): Response<KampusInfoEnvelopeDto> =
+            Response.success(200, KampusInfoEnvelopeDto())
     }
 
     private class FakeState : SyncStateStore {

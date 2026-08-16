@@ -10,6 +10,7 @@ import com.aryariap.forfh.alarm.AlarmScheduler
 import com.aryariap.forfh.alarm.AndroidAlarmApi
 import com.aryariap.forfh.alarm.ForfhNotifications
 import com.aryariap.forfh.data.db.AppDatabase
+import com.aryariap.forfh.data.db.KampusInfoDao
 import com.aryariap.forfh.data.db.ScheduledAlarmsDao
 import com.aryariap.forfh.data.db.SchedulesDao
 import com.aryariap.forfh.data.prefs.Preferences
@@ -49,6 +50,7 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer {
 
     override val schedulesDao: SchedulesDao by lazy { database.schedulesDao() }
     override val alarmsDao: ScheduledAlarmsDao by lazy { database.scheduledAlarmsDao() }
+    val kampusInfoDao: KampusInfoDao by lazy { database.kampusInfoDao() }
 
     private val dataStore: DataStore<CorePreferences> by lazy {
         PreferenceDataStoreFactory.create(
@@ -106,6 +108,9 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer {
             database.scheduledAlarmsDao().clearAll()
             database.schedulesDao().clearAll()
             database.tasksDao().clearAll()
+            database.kampusInfoDao().clearKampusInfo()
+            database.kampusInfoDao().clearPresensiRecap()
+            database.kampusInfoDao().clearKampusMeta()
             cookieJar.clear() // T4-M3: evict cookie in-memory — WAJIB sebelum secureCookieStore.clear()
             secureCookieStore.clear()
             prefs.setLastSync(0L, "")
