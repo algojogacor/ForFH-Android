@@ -43,7 +43,7 @@ class SyncRepositoryTest {
         override fun getAllOnce(): List<TaskEntity> = items
         override fun getActiveByDeadline(): List<TaskEntity> = items.filter { it.status != "DONE" }
             .sortedWith(compareBy<TaskEntity> { it.dueAt ?: Long.MAX_VALUE })
-        override fun updateStatus(id: String, status: String, computedStatus: String?) {
+        override suspend fun updateStatus(id: String, status: String, computedStatus: String?) {
             items = items.map { if (it.id == id) it.copy(status = status, computedStatus = computedStatus) else it }
         }
         override fun clearAll() { items = emptyList() }

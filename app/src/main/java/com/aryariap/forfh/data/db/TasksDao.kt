@@ -22,9 +22,14 @@ interface TasksDao {
     @Query("SELECT * FROM tasks WHERE status != 'DONE' ORDER BY (dueAt IS NULL), dueAt ASC")
     fun getActiveByDeadline(): List<TaskEntity>
 
-    /** Dipanggil HANYA setelah PUT /api/tasks/{id} sukses (invariant: server sumber kebenaran). */
+    /**
+     * Dipanggil HANYA setelah PUT /api/tasks/{id} sukses (invariant: server sumber kebenaran).
+     * suspend → Room jalankan di query executor; NON-suspend di sini akan crash
+     * "Cannot access database on the main thread" saat dipanggil dari viewModelScope (Main)
+     * — insiden 2026-08-16 (markDone) — padahal updateStatus dipanggil dari UI, bukan context Default.
+     */
     @Query("UPDATE tasks SET status = :status, computedStatus = :computedStatus WHERE id = :id")
-    fun updateStatus(id: String, status: String, computedStatus: String?)
+    suspend fun updateStatus(id: String, status: String, computedStatus: String?)
 
     @Query("DELETE FROM tasks")
     fun clearAll()
