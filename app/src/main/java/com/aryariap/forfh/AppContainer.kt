@@ -22,6 +22,7 @@ import com.aryariap.forfh.network.PersistentCookieJar
 import com.aryariap.forfh.sync.AlarmRescheduler
 import com.aryariap.forfh.sync.RescheduleAll
 import com.aryariap.forfh.sync.SyncRepository
+import com.aryariap.forfh.widget.refreshAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -71,7 +72,12 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer {
     override val planner: AlarmPlanner by lazy { AlarmPlanner() }
     val scheduler: AlarmScheduler by lazy { AlarmScheduler(AndroidAlarmApi(app)) }
     override val rescheduler: AlarmRescheduler by lazy {
-        AlarmRescheduler(planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs)
+        AlarmRescheduler(
+            planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs,
+            // Task 4: setelah reschedule alarm (sync sukses, mute/unmute, offset, exact-restore)
+            // widget ikut di-refresh; kegagalan refresh non-fatal (refreshAll menelan sendiri).
+            onAlarmsChanged = { refreshAll(app) },
+        )
     }
     val notifications: ForfhNotifications by lazy { ForfhNotifications(app) }
 

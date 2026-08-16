@@ -20,6 +20,8 @@ class AlarmRescheduler(
     private val alarmsDao: ScheduledAlarmsDao,
     private val schedulesDao: SchedulesDao,
     private val prefs: Preferences,
+    /** Task 4: dipanggil setelah execute() selesai (refresh widget; default no-op agar test lama utuh). */
+    private val onAlarmsChanged: suspend () -> Unit = {},
 ) : RescheduleAll {
     private val zone = ZoneId.of("Asia/Jakarta")
 
@@ -100,5 +102,11 @@ class AlarmRescheduler(
                 AlarmOp.Keep -> Unit
             }
         }
+        // Task 4: SEMUA jalur reschedule penuh (sync sukses, mute/unmute, ubah offset,
+        // exact-restore) melewati execute, refresh widget di sini. SyncWorker memanggil
+        // rescheduleAll() saat sync sukses, jadi titik "sync sukses" plan T4 tercakup di sini.
+        // onAlarmsChanged = refreshAll yang menelan kegagalannya sendiri: refresh widget
+        // tidak pernah menggagalkan alur alarm.
+        onAlarmsChanged()
     }
 }

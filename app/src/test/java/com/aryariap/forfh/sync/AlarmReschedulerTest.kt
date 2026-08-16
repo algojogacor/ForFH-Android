@@ -99,12 +99,18 @@ class AlarmReschedulerTest {
         return classRow to taskRow
     }
 
-    private fun rescheduler(dao: FakeAlarmsDao, schedulesDao: FakeSchedulesDao, api: FakeAlarmApi) = AlarmRescheduler(
+    private fun rescheduler(
+        dao: FakeAlarmsDao,
+        schedulesDao: FakeSchedulesDao,
+        api: FakeAlarmApi,
+        onAlarmsChanged: suspend () -> Unit = {},
+    ) = AlarmRescheduler(
         planner = planner,
         scheduler = AlarmScheduler(api),
         alarmsDao = dao,
         schedulesDao = schedulesDao,
         prefs = testPrefs(),
+        onAlarmsChanged = onAlarmsChanged,
     )
 
     @Test
@@ -169,5 +175,23 @@ class AlarmReschedulerTest {
             ),
             api.calls,
         )
+    }
+
+    @Test
+    fun `rescheduleAll - onAlarmsChanged dipanggil setelah execute (hook refresh widget Task 4)`() = runTest {
+        val now = wib("2026-08-17T00:00")
+        val (classRow, taskRow) = desiredRows(now)
+        val dao = FakeAlarmsDao(listOf(classRow, taskRow))
+        var refreshed = 0
+        val rs = rescheduler(dao, FakeSchedulesDao(listOf(sched())), FakeAlarmApi()) { refreshed++ }
+
+        rs.rescheduleAll()
+
+        // Hook eksekusi penuh: sync sukses / mute / ubah offset / exact-restore semua melewati
+        // rescheduleAll → execute → onAlarmsChanged, walau tidak ada row yang berubah (Keep).
+        assertEquals(1, refreshed)
+        // reconcile (boot) TIDAK memicu hook (row tidak berubah, widget konten sama).
+        rs.reconcile()
+        assertEquals(1, refreshed)
     }
 }

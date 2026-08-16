@@ -56,12 +56,7 @@ class NextUpViewModel(
         viewModelScope.launch {
             val now = nowProvider()
             val (nextClass, nextAlarm) = withContext(background) {
-                val schedules = container.schedulesDao.getEnabledOnce()
-                val nc = schedules
-                    .map { s ->
-                        s to container.planner.nextClassOccurrence(s.id, s.dayOfWeek, s.startTime, 0, now).startDateTime
-                    }
-                    .minByOrNull { it.second }
+                val nc = nextUp(container.schedulesDao.getEnabledOnce(), now) // helper bersama widget (Task 4)
                 val na = container.alarmsDao.nextClassAlarmOnce(now.toInstant().toEpochMilli())
                 nc to na
             }
