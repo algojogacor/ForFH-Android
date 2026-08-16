@@ -4,8 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,7 +23,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -33,11 +38,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.theme.ForfhColors
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @Composable
-fun JadwalScreen(viewModel: JadwalViewModel) {
+fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
     val state by viewModel.state.collectAsState()
+    val nextUp by nextUpViewModel.state.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
+
+    // Ticker kartu "Berikutnya" (Task 2): refresh 30 dtk. Akurasi menit cukup untuk countdown,
+    // hemat baterai (bukan 1 dtk). Ticker di UI, ViewModel hanya menyediakan refresh().
+    // Berhenti otomatis saat layar ini keluar komposisi (pindah tab).
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            nextUpViewModel.refresh()
+            delay(30_000)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -56,10 +76,20 @@ fun JadwalScreen(viewModel: JadwalViewModel) {
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (tab == 0) {
+                // Kartu "Berikutnya": di atas daftar hari ini, hanya saat ada data (kelas atau alarm).
+                if (nextUp.nextClass != null || nextUp.nextAlarm != null) {
+                    item {
+                        NextUpCard(
+                            state = nextUp,
+                            onMute = nextUpViewModel::muteToday,
+                            onUnmute = nextUpViewModel::unmuteToday,
+                        )
+                    }
+                }
                 items(state.today) { item -> KuliahCard(item) }
             } else {
                 items(state.week) { hari ->
@@ -86,6 +116,75 @@ fun JadwalScreen(viewModel: JadwalViewModel) {
     }
 }
 
+/**
+ * Kartu "Berikutnya" (V1.1 Task 2): kelas berikutnya + countdown (start WIB, ruling R5),
+ * alarm berikutnya, dan quick mute "hari ini" (pola PengaturanScreen). Pemanggil hanya
+ * mengomposisikan kartu saat ada data; baris di dalamnya opsional.
+ */
+@Composable
+private fun NextUpCard(state: NextUpUiState, onMute: () -> Unit, onUnmute: () -> Unit) {
+    val wib = ZoneId.of("Asia/Jakarta")
+    val now = ZonedDateTime.now(wib)
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(14.dp)
+                .height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(courseColor(state.nextClass?.first?.courseColor)),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                state.nextClass?.let { (kls, start) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            // "{nama}" = kode course (contoh plan: "PIH"), fallback nama lengkap.
+                            text = "Kelas berikutnya: ${kls.courseCode ?: kls.courseName} (${UiFormat.timeOf(start)})",
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        // Countdown tidak pernah terpotong: bagian nama yang panjang di-ellipsis,
+                        // bagian "dalam ..." selalu utuh (inilah informasi inti kartu).
+                        Text(
+                            text = " · dalam ${UiFormat.countdownTo(now, start)}",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                }
+                state.nextAlarm?.let { alarm ->
+                    Text(
+                        text = "Alarm berikutnya ${UiFormat.timeOf(alarm.triggerAtMillis, wib)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // Tombol mute kecil (pola PengaturanScreen, teks singkat versi kartu):
+                // "Aktifkan lagi" saat sedang mute; "Matikan alarm hari ini" hanya saat ada
+                // alarm untuk dimatikan (tanpa alarm, tombol mute adalah kontrol mati).
+                if (state.mutedToday) {
+                    TextButton(onClick = onUnmute) { Text("Aktifkan lagi") }
+                } else if (state.nextAlarm != null) {
+                    TextButton(onClick = onMute) { Text("Matikan alarm hari ini") }
+                }
+            }
+        }
+    }
+}
+
+/** Warna course dari hex "RRGGBB"; fallback accent bila tidak valid (pola KuliahCard). */
+private fun courseColor(hex: String?): Color =
+    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(ForfhColors.Accent)
+
 @Composable
 private fun KuliahCard(item: JadwalItem) {
     Card(
@@ -97,8 +196,7 @@ private fun KuliahCard(item: JadwalItem) {
                 modifier = Modifier
                     .width(4.dp)
                     .height(44.dp)
-                    .background(runCatching { Color(android.graphics.Color.parseColor(item.color)) }
-                        .getOrDefault(ForfhColors.Accent)),
+                    .background(courseColor(item.color)),
             )
             Spacer(Modifier.width(12.dp))
             Column {

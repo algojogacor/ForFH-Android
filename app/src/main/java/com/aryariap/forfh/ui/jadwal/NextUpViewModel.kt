@@ -74,6 +74,9 @@ class NextUpViewModel(
         viewModelScope.launch {
             container.prefs.setMutedDate(todayWib())
             withContext(background) { container.rescheduler.rescheduleAll() }
+            // Ruling R12 (review Task 1): rescheduleAll mengubah row alarm → hitung ulang
+            // kartu langsung; tanpa ini kartu bisa tampilkan alarm basi sampai ticker 30 dtk.
+            refresh()
         }
     }
 
@@ -82,6 +85,7 @@ class NextUpViewModel(
         viewModelScope.launch {
             container.prefs.setMutedDate(null)
             withContext(background) { container.rescheduler.rescheduleAll() }
+            refresh()
         }
     }
 

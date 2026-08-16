@@ -328,6 +328,64 @@ class NextUpViewModelTest {
         awaitUntil("mutedToday false setelah unmute") { !viewModel.state.value.mutedToday }
     }
 
+    // Ruling R12: mute/unmute memanggil refresh() setelah rescheduleAll → kartu tidak menampilkan
+    // alarm basi sampai ticker 30 dtk berikutnya. Rescheduler fake di sini mensimulasikan efek
+    // nyata rescheduleAll pada row alarm (mute menghapus, unmute memasang).
+    @Test
+    fun `muteToday - kartu langsung kosongkan alarm (refresh setelah rescheduleAll)`() = runTest(dispatcher) {
+        val now = wib("2026-08-17T07:30")
+        val nowMs = now.toInstant().toEpochMilli()
+        val alarmsDao = FakeAlarmsDao(listOf(alarmRow("class-near", triggerAtMillis = nowMs + 600_000)))
+        val rescheduler = object : RescheduleAll {
+            var calls = 0
+            override suspend fun rescheduleAll() { calls++; alarmsDao.rows.clear() } // mute membatalkan alarm kelas
+        }
+        val viewModel = vm(
+            FakeContainer(
+                schedulesDao = FakeSchedulesDao(emptyList()),
+                alarmsDao = alarmsDao,
+                prefs = testPrefs(backgroundScope),
+                rescheduler = rescheduler,
+            )
+        ) { now }
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        assertEquals("class-near", viewModel.state.value.nextAlarm!!.id)
+
+        viewModel.muteToday()
+        awaitUntil("nextAlarm null segera setelah mute, tanpa menunggu ticker") {
+            viewModel.state.value.nextAlarm == null
+        }
+        assertEquals(1, rescheduler.calls)
+    }
+
+    @Test
+    fun `unmuteToday - kartu langsung tampilkan alarm lagi (refresh setelah rescheduleAll)`() = runTest(dispatcher) {
+        val now = wib("2026-08-17T07:30")
+        val nowMs = now.toInstant().toEpochMilli()
+        val alarmsDao = FakeAlarmsDao()
+        val row = alarmRow("class-new", triggerAtMillis = nowMs + 600_000)
+        val rescheduler = object : RescheduleAll {
+            var calls = 0
+            override suspend fun rescheduleAll() { calls++; alarmsDao.upsert(row) } // unmute memasang alarm lagi
+        }
+        val viewModel = vm(
+            FakeContainer(
+                schedulesDao = FakeSchedulesDao(emptyList()),
+                alarmsDao = alarmsDao,
+                prefs = testPrefs(backgroundScope),
+                rescheduler = rescheduler,
+            )
+        ) { now }
+
+        viewModel.unmuteToday()
+        awaitUntil("nextAlarm tampil segera setelah unmute, tanpa menunggu ticker") {
+            viewModel.state.value.nextAlarm?.id == "class-new"
+        }
+        assertEquals(1, rescheduler.calls)
+    }
+
     @Test
     fun `refresh - hitung ulang dari waktu sekarang tiap panggilan (countdown bergerak saat kelas lewat)`() = runTest(dispatcher) {
         var now = wib("2026-08-17T07:30") // Senin 07:30

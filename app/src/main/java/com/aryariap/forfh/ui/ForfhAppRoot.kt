@@ -33,6 +33,7 @@ import com.aryariap.forfh.ForfhApp
 import com.aryariap.forfh.data.prefs.SessionEvent
 import com.aryariap.forfh.ui.jadwal.JadwalScreen
 import com.aryariap.forfh.ui.jadwal.JadwalViewModel
+import com.aryariap.forfh.ui.jadwal.NextUpViewModel
 import com.aryariap.forfh.ui.login.LoginScreen
 import com.aryariap.forfh.ui.login.LoginViewModel
 import com.aryariap.forfh.ui.pengaturan.PengaturanScreen
@@ -117,11 +118,12 @@ private fun MainScaffold(container: AppContainer, openTasks: Boolean) {
     val containerApp = (context.applicationContext as ForfhApp).container
 
     val jadwalVm: JadwalViewModel = viewModel(factory = simpleFactory { JadwalViewModel(containerApp) })
+    val nextUpVm: NextUpViewModel = viewModel(factory = simpleFactory { NextUpViewModel(containerApp) })
     val tugasVm: TugasViewModel = viewModel(factory = simpleFactory { TugasViewModel(containerApp) })
     val pengaturanVm: PengaturanViewModel = viewModel(factory = simpleFactory { PengaturanViewModel(containerApp) })
 
     val tabs: List<Triple<String, ImageVector, @Composable () -> Unit>> = listOf(
-        Triple("Jadwal", Icons.Filled.DateRange as ImageVector) { JadwalScreen(jadwalVm) },
+        Triple("Jadwal", Icons.Filled.DateRange as ImageVector) { JadwalScreen(jadwalVm, nextUpVm) },
         Triple("Tugas", Icons.AutoMirrored.Filled.List) { TugasListScreen(tugasVm) },
         Triple("Atur", Icons.Filled.Settings) { PengaturanScreen(pengaturanVm) },
     )
@@ -142,7 +144,7 @@ private fun MainScaffold(container: AppContainer, openTasks: Boolean) {
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (tab) {
-                0 -> JadwalScreen(jadwalVm)
+                0 -> JadwalScreen(jadwalVm, nextUpVm)
                 1 -> TugasListScreen(tugasVm)
                 2 -> PengaturanScreen(pengaturanVm)
             }
