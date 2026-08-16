@@ -23,6 +23,19 @@ interface TasksDao {
     fun getActiveByDeadline(): List<TaskEntity>
 
     /**
+     * Kandidat notifikasi deadline H-1 (TaskDeadlinePlanner): tugas aktif (status != DONE) dengan
+     * dueAt terparse dalam rentang [fromMillis, toMillis) — caller menghitung batas hari WIB
+     * (today 00:00 .. lusa 00:00). Planner murni yang memutuskan H-1; query hanya mempersempit
+     * kandidat supaya tidak menarik seluruh tabel. Batas ms (bukan epoch day) agar konversi WIB
+     * tetap di Kotlin (ZonedDateTime), tidak tersembunyi di SQL.
+     */
+    @Query(
+        "SELECT * FROM tasks WHERE status != 'DONE' AND dueAt IS NOT NULL " +
+            "AND dueAt >= :fromMillis AND dueAt < :toMillis"
+    )
+    fun getDueTasksOnce(fromMillis: Long, toMillis: Long): List<TaskEntity>
+
+    /**
      * Dipanggil HANYA setelah PUT /api/tasks/{id} sukses (invariant: server sumber kebenaran).
      * suspend → Room jalankan di query executor; NON-suspend di sini akan crash
      * "Cannot access database on the main thread" saat dipanggil dari viewModelScope (Main)
