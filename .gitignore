@@ -9,3 +9,8 @@ captures/
 *.keystore
 keystore.properties
 .DS_Store
+
+# Skills lokal agent (jangan masuk remote)
+.claude/skills/
+.agents/
+skills-lock.json
