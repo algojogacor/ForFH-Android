@@ -61,6 +61,12 @@ android {
     packaging {
         resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
     }
+
+    // android.util.Log tidak dimock di unit test JVM murni → kembalikan default (0)
+    // supaya path logging (mis. SyncRepository.syncKampusInfo) tidak crash di test.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 // Built-in Kotlin AGP 9: blok kotlin{} top-level (bukan android.kotlinOptions)

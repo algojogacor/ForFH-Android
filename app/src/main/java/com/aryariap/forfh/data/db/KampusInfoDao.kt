@@ -40,11 +40,12 @@ interface KampusInfoDao {
     suspend fun insertMeta(meta: KampusMetaEntity)
 
     /**
-     * Simpan snapshot GET /api/campus/info. Presensi wipe-and-replace (tabel mirror,
-     * pola SchedulesDao.replaceAll). Info kampus di-upsert per jenis — jenis yang tidak
-     * ikut respons (fetch-nya gagal di sisi web) MEMPERTAHANKAN data lama, sama seperti
-     * perilaku web (toleran per jenis). connected=false → semua tabel dibersihkan
-     * (metadata tetap ditulis connected=false supaya UI tahu belum terhubung).
+     * Simpan snapshot GET /api/campus/info. Kedua tabel kampus WIPE-AND-REPLACE (ruling R23,
+     * terverifikasi dari route.ts web): route mengembalikan SEMUA baris campusData setiap
+     * kali → jenis yang absen dari respons memang sudah tidak ada di sisi web → dihapus
+     * (delete-if-absent), bukan dipertahankan. connected=false → data dibersihkan semua
+     * (metadata tetap ditulis connected=false supaya UI tahu belum terhubung, R23: layar
+     * menampilkan state putus, tidak pernah kartu basi).
      */
     @Transaction
     suspend fun saveSnapshot(snapshot: KampusInfoSnapshot) {
@@ -58,6 +59,7 @@ interface KampusInfoDao {
         if (snapshot.connected) {
             clearPresensiRecap()
             insertPresensiRecap(snapshot.presensi)
+            clearKampusInfo() // R23: wipe-and-replace — delete jenis yang tidak ikut respons
             insertKampusInfo(snapshot.info)
         } else {
             clearPresensiRecap()

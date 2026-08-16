@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences as CorePreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.aryariap.forfh.alarm.AlarmFlowHandler
 import com.aryariap.forfh.alarm.AlarmPlanner
 import com.aryariap.forfh.alarm.AlarmScheduler
@@ -23,10 +25,15 @@ import com.aryariap.forfh.network.PersistentCookieJar
 import com.aryariap.forfh.sync.AlarmRescheduler
 import com.aryariap.forfh.sync.RescheduleAll
 import com.aryariap.forfh.sync.SyncRepository
+import com.aryariap.forfh.sync.SyncWorker
+import com.aryariap.forfh.ui.info.InfoContainer
 import com.aryariap.forfh.widget.refreshAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -41,7 +48,7 @@ interface NextUpContainer {
     val planner: AlarmPlanner
 }
 
-class AppContainer(private val app: ForfhApp) : NextUpContainer {
+class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer {
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val context: android.content.Context get() = app
@@ -50,7 +57,7 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer {
 
     override val schedulesDao: SchedulesDao by lazy { database.schedulesDao() }
     override val alarmsDao: ScheduledAlarmsDao by lazy { database.scheduledAlarmsDao() }
-    val kampusInfoDao: KampusInfoDao by lazy { database.kampusInfoDao() }
+    override val kampusInfoDao: KampusInfoDao by lazy { database.kampusInfoDao() }
 
     private val dataStore: DataStore<CorePreferences> by lazy {
         PreferenceDataStoreFactory.create(
@@ -84,8 +91,25 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer {
     }
     val notifications: ForfhNotifications by lazy { ForfhNotifications(app) }
 
+    // ---- InfoContainer (layar Info, Task 8) ----
+    override val lastSyncStatus: Flow<String> get() = prefs.lastSyncStatus
+    override val lastSyncAt: Flow<Long> get() = prefs.lastSyncAt
+
+    /** Sinyal "sync sedang berjalan/menunggu" dari unique work "sync_once" (WorkManager). */
+    override val syncRunning: Flow<Boolean> by lazy {
+        WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(SyncWorker.UNIQUE_SYNC_ONCE)
+            .map { infos ->
+                infos.any {
+                    it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING
+                }
+            }
+            .distinctUntilChanged()
+    }
+
+    override val enqueueSync: () -> Unit = { SyncWorker.enqueueOneShot(app) }
+
     val syncRepository: SyncRepository by lazy {
-        SyncRepository(apiService, database.schedulesDao(), database.tasksDao(), prefs)
+        SyncRepository(apiService, database.schedulesDao(), database.tasksDao(), prefs, database.kampusInfoDao())
     }
 
     val alarmFlow: AlarmFlowHandler by lazy {

@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
@@ -31,6 +32,8 @@ import androidx.navigation.compose.rememberNavController
 import com.aryariap.forfh.AppContainer
 import com.aryariap.forfh.ForfhApp
 import com.aryariap.forfh.data.prefs.SessionEvent
+import com.aryariap.forfh.ui.info.InfoScreen
+import com.aryariap.forfh.ui.info.InfoViewModel
 import com.aryariap.forfh.ui.jadwal.JadwalScreen
 import com.aryariap.forfh.ui.jadwal.JadwalViewModel
 import com.aryariap.forfh.ui.jadwal.NextUpViewModel
@@ -120,11 +123,15 @@ private fun MainScaffold(container: AppContainer, openTasks: Boolean) {
     val jadwalVm: JadwalViewModel = viewModel(factory = simpleFactory { JadwalViewModel(containerApp) })
     val nextUpVm: NextUpViewModel = viewModel(factory = simpleFactory { NextUpViewModel(containerApp) })
     val tugasVm: TugasViewModel = viewModel(factory = simpleFactory { TugasViewModel(containerApp) })
+    val infoVm: InfoViewModel = viewModel(factory = simpleFactory { InfoViewModel(containerApp) })
     val pengaturanVm: PengaturanViewModel = viewModel(factory = simpleFactory { PengaturanViewModel(containerApp) })
 
+    // Tab ke-4 "Info" (V1.1 Task 8): ikon Info (lingkaran "i") relevan dengan isi layar —
+    // info kampus & kehadiran; ikon hanya penanda tab, label di bawahnya yang menjelaskan.
     val tabs: List<Triple<String, ImageVector, @Composable () -> Unit>> = listOf(
         Triple("Jadwal", Icons.Filled.DateRange as ImageVector) { JadwalScreen(jadwalVm, nextUpVm) },
         Triple("Tugas", Icons.AutoMirrored.Filled.List) { TugasListScreen(tugasVm) },
+        Triple("Info", Icons.Filled.Info) { InfoScreen(infoVm) },
         Triple("Atur", Icons.Filled.Settings) { PengaturanScreen(pengaturanVm) },
     )
 
@@ -146,7 +153,8 @@ private fun MainScaffold(container: AppContainer, openTasks: Boolean) {
             when (tab) {
                 0 -> JadwalScreen(jadwalVm, nextUpVm)
                 1 -> TugasListScreen(tugasVm)
-                2 -> PengaturanScreen(pengaturanVm)
+                2 -> InfoScreen(infoVm)
+                3 -> PengaturanScreen(pengaturanVm)
             }
         }
     }
