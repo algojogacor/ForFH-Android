@@ -156,8 +156,12 @@ private fun CompactContent(
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .padding(12.dp)
-            .clickable(actionStartActivity<MainActivity>()),
+            .background(GlanceTheme.colors.widgetBackground)
+            // clickable SEBELUM padding: seluruh footprint widget (termasuk tepi) dapat di-tap,
+            // bukan hanya area dalam padding: kontras teks baru sah karena ada permukaan nyata
+            // (widgetBackground = background skema app, light #FAF9F7 / dark gelap, R-25).
+            .clickable(actionStartActivity<MainActivity>())
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.Start,
     ) {
@@ -213,8 +217,12 @@ private fun StandardContent(
     Row(
         modifier = GlanceModifier
             .fillMaxSize()
-            .padding(14.dp)
-            .clickable(actionStartActivity<MainActivity>()),
+            .background(GlanceTheme.colors.widgetBackground)
+            // clickable SEBELUM padding: seluruh footprint widget (termasuk tepi) dapat di-tap,
+            // bukan hanya area dalam padding: kontras teks baru sah karena ada permukaan nyata
+            // (widgetBackground = background skema app, light #FAF9F7 / dark gelap, R-25).
+            .clickable(actionStartActivity<MainActivity>())
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (nextClass != null) {
@@ -294,7 +302,7 @@ private fun StandardContent(
  * + gap 4dp → nama ≤ 65.75dp. Tiap cabang memastikan baris_terestimasi x 1.25 x fontSize
  * ≤ 65.75 (karakter per baris di lebar 126dp).
  */
-private fun compactNameFontSize(fullTextLength: Int): TextUnit = when {
+internal fun compactNameFontSize(fullTextLength: Int): TextUnit = when {
     fullTextLength <= 45 -> 15.sp // 3 baris x 18.75dp = 56.25 ✓ (15 char/baris @15sp)
     fullTextLength <= 68 -> 13.sp // 4 baris x 16.25dp = 65 ✓ (17 char/baris @13sp)
     else -> 12.sp                 // 4 baris x 15dp = 60 ✓ (19 char/baris @12sp); nama >76 char
@@ -307,7 +315,7 @@ private fun compactNameFontSize(fullTextLength: Int): TextUnit = when {
  * alarm; tanpa alarm budget lebih longgar, aturan tetap aman). Karakter per baris di lebar
  * 232dp. Ukuran base 17sp sengaja di atas compact (15sp): nama adalah focal point standard.
  */
-private fun standardNameFontSize(nameLength: Int): TextUnit = when {
+internal fun standardNameFontSize(nameLength: Int): TextUnit = when {
     nameLength <= 48 -> 17.sp // 2 baris x 21.25dp = 42.5 ✓ (24 char/baris @17sp)
     nameLength <= 56 -> 15.sp // 2 baris x 18.75dp = 37.5 ✓ (28 char/baris)
     nameLength <= 64 -> 13.sp // 2 baris x 16.25dp = 32.5 ✓ (32 char/baris)
