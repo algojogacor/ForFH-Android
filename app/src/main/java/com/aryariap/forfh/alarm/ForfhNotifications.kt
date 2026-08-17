@@ -23,7 +23,7 @@ import com.aryariap.forfh.debug.AppLog
 class ForfhNotifications(private val context: Context) {
 
     // Suara alarm: Extreme.mp3 milik user, di-bundle ke res/raw (pilihan user 2026-08-15).
-    // Resource URI — selalu ada, tanpa izin baca file, berfungsi di background (FSI & heads-up).
+    // Resource URI : selalu ada, tanpa izin baca file, berfungsi di background (FSI & heads-up).
     private val alarmSoundUri: Uri =
         Uri.parse("android.resource://${context.packageName}/${R.raw.extreme}")
 
@@ -34,7 +34,7 @@ class ForfhNotifications(private val context: Context) {
             // Migrasi suara alarm → Extreme.mp3 (v2) + audio attributes USAGE_ALARM (v3):
             // sound & audio attributes channel TIDAK bisa diubah setelah create
             // (API 26+ mengunci keduanya saat channel dibuat). Channel lama dari
-            // versi sebelumnya harus di-delete lalu di-recreate — sekali, dipicu flag.
+            // versi sebelumnya harus di-delete lalu di-recreate : sekali, dipicu flag.
             // Tanpa ini, APK baru tetap bunyi suara sistem di channel yang sudah ada.
             val prefs = context.getSharedPreferences("forfh_notif", Context.MODE_PRIVATE)
             if (prefs.getInt("channel_sound_version", 0) < CHANNEL_SOUND_VERSION) {
@@ -53,7 +53,7 @@ class ForfhNotifications(private val context: Context) {
                     // default USAGE_NOTIFICATION → volume ikut stream notif (~50%),
                     // bukan stream alarm (87%) → bunyi "kecil banget".
                     // setAudioAttributes() sudah tidak ada di compileSdk 37 (android.jar
-                    // platform 36/37 hanya punya getAudioAttributes) — jalan satu-satunya:
+                    // platform 36/37 hanya punya getAudioAttributes) : jalan satu-satunya:
                     // setSound(uri, attrs) yang menetapkan sound + attributes sekaligus.
                     setSound(
                         alarmSoundUri,
@@ -63,7 +63,7 @@ class ForfhNotifications(private val context: Context) {
                             .build(),
                     )
                     enableVibration(true)
-                    // CATEGORY_ALARM dibawa notifikasi (builder), bukan channel — setCategory channel API tersembunyi
+                    // CATEGORY_ALARM dibawa notifikasi (builder), bukan channel : setCategory channel API tersembunyi
                 },
             )
             nm.createNotificationChannel(
@@ -155,7 +155,7 @@ class ForfhNotifications(private val context: Context) {
 
     /**
      * Deadline tugas H-1: notif biasa (bukan full-screen), tap → halaman Tugas (open_tab=1).
-     * R2: pakai channel tugas existing CHANNEL_TASK — tanpa channel baru.
+     * R2: pakai channel tugas existing CHANNEL_TASK : tanpa channel baru.
      */
     fun showTaskDeadline(text: String, taskId: String, date: String) {
         ensureChannels()
@@ -209,7 +209,7 @@ class ForfhNotifications(private val context: Context) {
         private const val TAG = "ForfhNotifications"
         const val CHANNEL_CLASS = "alarm_kuliah"
         const val CHANNEL_TASK = "reminder_tugas"
-        // Bump tiap kali sound/vibration/audio-attributes channel berubah — memicu delete+recreate sekali
+        // Bump tiap kali sound/vibration/audio-attributes channel berubah : memicu delete+recreate sekali
         private const val CHANNEL_SOUND_VERSION = 3
     }
 }

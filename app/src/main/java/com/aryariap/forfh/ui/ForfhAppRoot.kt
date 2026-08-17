@@ -61,7 +61,7 @@ fun <T : ViewModel> simpleFactory(create: () -> T): ViewModelProvider.Factory =
 fun ForfhAppRoot(container: AppContainer, startTab: Int?) {
     val navController = rememberNavController()
 
-    // Jalur awal: cek cookie sesi (terenkripsi di Keystore) — splash sesaat lalu login/main
+    // Jalur awal: cek cookie sesi (terenkripsi di Keystore) : splash sesaat lalu login/main
     LaunchedEffect(Unit) {
         val loggedIn = container.sessionManager.isLoggedIn()
         navController.navigate(if (loggedIn) Routes.MAIN else Routes.LOGIN) { popUpTo(0) }
@@ -70,7 +70,7 @@ fun ForfhAppRoot(container: AppContainer, startTab: Int?) {
     // Auto-logout (401) & login sukses → pindah halaman (spec §10).
     // 401 (cleanupDone=false) → jalankan container.logout: wipe §8.10 penuh (cancel alarm, hapus
     // Room + DataStore + cookie) TEPAT SEKALI per kejadian; logout eksplisit sudah di-wipe oleh
-    // container.logout sendiri (cleanupDone=true) — tidak dua kali (fix round final review).
+    // container.logout sendiri (cleanupDone=true) : tidak dua kali (fix round final review).
     LaunchedEffect(Unit) {
         container.sessionManager.events.collect { ev ->
             when (ev) {
@@ -81,7 +81,7 @@ fun ForfhAppRoot(container: AppContainer, startTab: Int?) {
                     // container.logout() sendiri. Wipe TEPAT sekali per kejadian (spec §10).
                     if (!ev.cleanupDone) container.logout(ev.message)
                     // Navigasi idempotent (fix round 2): container.logout meng-emit LoggedOut KEDUA
-                    // (cleanupDone=true) setelah wipe selesai — tanpa guard, event kedua ini me-navigate
+                    // (cleanupDone=true) setelah wipe selesai : tanpa guard, event kedua ini me-navigate
                     // ulang popUpTo(0) inclusive → entry LOGIN + ViewModel penampil pesan §10 dihancurkan
                     // → pesan "Sesi berakhir, masuk lagi." hilang. Skip bila destination sudah LOGIN;
                     // kasus 401 saat user sudah di LOGIN (sync background) juga aman tanpa re-navigasi.
@@ -126,7 +126,7 @@ private fun MainScaffold(container: AppContainer, startTab: Int?) {
     val infoVm: InfoViewModel = viewModel(factory = simpleFactory { InfoViewModel(containerApp) })
     val pengaturanVm: PengaturanViewModel = viewModel(factory = simpleFactory { PengaturanViewModel(containerApp) })
 
-    // Tab ke-4 "Info" (V1.1 Task 8): ikon Info (lingkaran "i") relevan dengan isi layar —
+    // Tab ke-4 "Info" (V1.1 Task 8): ikon Info (lingkaran "i") relevan dengan isi layar :
     // info kampus & kehadiran; ikon hanya penanda tab, label di bawahnya yang menjelaskan.
     val tabs: List<Triple<String, ImageVector, @Composable () -> Unit>> = listOf(
         Triple("Jadwal", Icons.Filled.DateRange as ImageVector) { JadwalScreen(jadwalVm, nextUpVm) },

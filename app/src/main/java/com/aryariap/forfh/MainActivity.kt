@@ -38,8 +38,8 @@ class MainActivity : ComponentActivity() {
     /**
      * MANDATORY (Global Constraints, ruling R6): minta izin runtime POST_NOTIFICATIONS
      * otomatis saat app pertama dibuka (Android 13+, API 33+). Dipanggil sekali per launch
-     * sampai diberikan — Android hanya menampilkan dialog sekali. Guard memakai
-     * checkSelfPermission (granted, bukan areNotificationsEnabled — fix review): izin yang
+     * sampai diberikan : Android hanya menampilkan dialog sekali. Guard memakai
+     * checkSelfPermission (granted, bukan areNotificationsEnabled : fix review): izin yang
      * pernah diberikan tapi dimatikan di setelan tidak perlu diminta lagi. Hasilnya tidak
      * mengubah perilaku app: izin ditolak → receiver tetap jalan tapi silent (guard, spec
      * §10) dan Pengaturan menyediakan tombol buka setelan; diberi → notifikasi tampil normal.
