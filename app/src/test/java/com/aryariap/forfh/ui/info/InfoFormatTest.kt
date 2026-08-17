@@ -31,8 +31,68 @@ class InfoFormatTest {
     }
 
     @Test
-    fun `fieldLabel - field tak dikenal ditampilkan apa adanya (jujur, pola web)`() {
-        assertEquals("ASING_BARU", InfoFormat.fieldLabel("ASING_BARU"))
+    fun `fieldLabel - field tak dikenal di-humanisasi Title Case, bukan key mentah`() {
+        assertEquals("Asing Baru", InfoFormat.fieldLabel("ASING_BARU"))
+        assertEquals("Nm Mata Kuliah 2", InfoFormat.fieldLabel("NM_MATA_KULIAH_2"))
+    }
+
+    @Test
+    fun `fieldLabel - kunci lowercase dari respons asli ikut ter-label`() {
+        assertEquals("Nama MK", InfoFormat.fieldLabel("nm_mata_kuliah"))
+        assertEquals("Kelas", InfoFormat.fieldLabel("nama_kelas"))
+        assertEquals("Hari", InfoFormat.fieldLabel("hari"))
+        assertEquals("Ruangan", InfoFormat.fieldLabel("ruang"))
+        assertEquals("Kuota", InfoFormat.fieldLabel("kuota"))
+        assertEquals("Peserta", InfoFormat.fieldLabel("peserta"))
+        assertEquals("Angkatan", InfoFormat.fieldLabel("THN_ANGKATAN_MHS"))
+        assertEquals("Jenjang", InfoFormat.fieldLabel("NM_JENJANG"))
+        assertEquals("Status Akademik", InfoFormat.fieldLabel("NM_STATUS_PENGGUNA"))
+    }
+
+    @Test
+    fun `fieldLabel - seluruh map web (campusMeta) ter-salin`() {
+        assertEquals("Nama", InfoFormat.fieldLabel("NAMA"))
+        assertEquals("Nama MK", InfoFormat.fieldLabel("NAMA_MK"))
+        assertEquals("Kode MK", InfoFormat.fieldLabel("KD_MATA_KULIAH"))
+        assertEquals("Kode", InfoFormat.fieldLabel("KODE"))
+        assertEquals("SKS", InfoFormat.fieldLabel("KREDIT_SEMESTER"))
+        assertEquals("Kelas", InfoFormat.fieldLabel("KELAS"))
+        assertEquals("Dosen", InfoFormat.fieldLabel("DOSEN"))
+        assertEquals("Dosen Wali", InfoFormat.fieldLabel("DOSEN_WALI"))
+        assertEquals("Nilai", InfoFormat.fieldLabel("NILAI_HURUF"))
+        assertEquals("Skor", InfoFormat.fieldLabel("NILAI"))
+        assertEquals("Semester", InfoFormat.fieldLabel("ID_SEMESTER"))
+        assertEquals("Tahun Ajaran", InfoFormat.fieldLabel("TAHUN_AJARAN"))
+        assertEquals("Periode", InfoFormat.fieldLabel("NM_SEMESTER"))
+        assertEquals("Prodi", InfoFormat.fieldLabel("PRODI"))
+        assertEquals("Jumlah MK", InfoFormat.fieldLabel("JUM_MK"))
+        assertEquals("SKS Tempuh", InfoFormat.fieldLabel("SKS_TEMPUH"))
+        assertEquals("Tanggal", InfoFormat.fieldLabel("TANGGAL"))
+        assertEquals("Tanggal Awal", InfoFormat.fieldLabel("TANGGAL_AWAL"))
+        assertEquals("Berlaku", InfoFormat.fieldLabel("BERLAKU"))
+        assertEquals("Jam", InfoFormat.fieldLabel("JAM"))
+        assertEquals("Ruangan", InfoFormat.fieldLabel("RUANGAN"))
+        assertEquals("Status", InfoFormat.fieldLabel("NAMA_STATUS"))
+        assertEquals("Keterangan", InfoFormat.fieldLabel("KET"))
+        assertEquals("Uraian", InfoFormat.fieldLabel("URAIAN"))
+        assertEquals("Nominal", InfoFormat.fieldLabel("NOMINAL"))
+        assertEquals("Jumlah", InfoFormat.fieldLabel("JUMLAH"))
+        assertEquals("Agenda", InfoFormat.fieldLabel("AGENDA"))
+        assertEquals("Kegiatan", InfoFormat.fieldLabel("NM_KEGIATAN"))
+        assertEquals("Tanggal Mulai", InfoFormat.fieldLabel("TGL_MULAI_JSF"))
+        assertEquals("Tanggal Selesai", InfoFormat.fieldLabel("TGL_SELESAI_JSF"))
+        assertEquals("Tanggal Bayar", InfoFormat.fieldLabel("TGL_BAYAR"))
+        assertEquals("Nominal Dibayar", InfoFormat.fieldLabel("NOMINAL_BAYAR"))
+        assertEquals("Lama Studi", InfoFormat.fieldLabel("LAMA_STUDI"))
+        assertEquals("No. Ujian", InfoFormat.fieldLabel("NO_UJIAN"))
+        assertEquals("Tgl Verifikasi", InfoFormat.fieldLabel("TGL_VERIFIKASI_PENDIDIKAN"))
+        assertEquals("Nama Dosen", InfoFormat.fieldLabel("NAMA_DOSEN"))
+        assertEquals("NIP", InfoFormat.fieldLabel("NIP_DOSEN"))
+        assertEquals("NIDN", InfoFormat.fieldLabel("NIDN_DOSEN"))
+        assertEquals("Email", InfoFormat.fieldLabel("EMAIL"))
+        assertEquals("Hadir", InfoFormat.fieldLabel("JML_HADIR"))
+        assertEquals("Total TM", InfoFormat.fieldLabel("TOTAL_TM"))
+        assertEquals("Persen", InfoFormat.fieldLabel("PERSEN"))
     }
 
     @Test
@@ -41,11 +101,91 @@ class InfoFormatTest {
         assertEquals("Kalender Akademik", InfoFormat.jenisTitle("kalender_akademik"))
         assertEquals("Peserta Mata Kuliah", InfoFormat.jenisTitle("peserta_mk"))
         assertEquals("Riwayat HER", InfoFormat.jenisTitle("hist_her"))
+        assertEquals("Instruksi Tugas", InfoFormat.jenisTitle("instruksi_tugas"))
     }
 
     @Test
-    fun `jenisTitle - jenis baru tak dikenal ditampilkan apa adanya`() {
-        assertEquals("jenis_baru", InfoFormat.jenisTitle("jenis_baru"))
+    fun `jenisTitle - jenis baru tak dikenal di-humanisasi Title Case`() {
+        assertEquals("Jenis Baru", InfoFormat.jenisTitle("jenis_baru"))
+    }
+
+    // ---------- humanizeField ----------
+
+    @Test
+    fun `humanizeField - UPPERCASE_SNAKE jadi Title Case`() {
+        assertEquals("Asing Baru", InfoFormat.humanizeField("ASING_BARU"))
+        assertEquals("Thn Angkatan Mhs", InfoFormat.humanizeField("THN_ANGKATAN_MHS"))
+    }
+
+    @Test
+    fun `humanizeField - lowercase snake jadi Title Case`() {
+        assertEquals("Nm Mata Kuliah", InfoFormat.humanizeField("nm_mata_kuliah"))
+        assertEquals("Sudah Siap", InfoFormat.humanizeField("sudah_siap"))
+    }
+
+    @Test
+    fun `humanizeField - kata tunggal`() {
+        assertEquals("Asing", InfoFormat.humanizeField("ASING"))
+        assertEquals("Asing", InfoFormat.humanizeField("asing"))
+        assertEquals("Hari2", InfoFormat.humanizeField("HARI2"))
+    }
+
+    @Test
+    fun `humanizeField - camelCase dipecah`() {
+        assertEquals("Course Id", InfoFormat.humanizeField("courseId"))
+        assertEquals("Kode Mk", InfoFormat.humanizeField("kodeMk"))
+    }
+
+    @Test
+    fun `humanizeField - kosong dikembalikan apa adanya`() {
+        assertEquals("", InfoFormat.humanizeField(""))
+        assertEquals(" ", InfoFormat.humanizeField(" "))
+    }
+
+    // ---------- formatRupiah ----------
+
+    @Test
+    fun `formatRupiah - angka bulat dengan pemisah ribuan titik`() {
+        assertEquals("Rp 1.234.567", InfoFormat.formatRupiah("1234567"))
+        assertEquals("Rp 15.000", InfoFormat.formatRupiah("15000"))
+        assertEquals("Rp 1.000.000.000", InfoFormat.formatRupiah("1000000000"))
+        assertEquals("Rp 0", InfoFormat.formatRupiah("0"))
+    }
+
+    @Test
+    fun `formatRupiah - desimal dibulatkan ke rupiah penuh`() {
+        assertEquals("Rp 1.234.567", InfoFormat.formatRupiah("1234567.4"))
+        assertEquals("Rp 1.234.568", InfoFormat.formatRupiah("1234567.5"))
+    }
+
+    @Test
+    fun `formatRupiah - format grup Indonesia diterima`() {
+        assertEquals("Rp 1.234.567", InfoFormat.formatRupiah("1.234.567"))
+        assertEquals("Rp 5.000", InfoFormat.formatRupiah("5.000"))
+    }
+
+    @Test
+    fun `formatRupiah - bukan angka - null (baris dilewati, bukan nilai palsu)`() {
+        assertNull(InfoFormat.formatRupiah(null))
+        assertNull(InfoFormat.formatRupiah(""))
+        assertNull(InfoFormat.formatRupiah("abc"))
+        assertNull(InfoFormat.formatRupiah("-5000"))
+        assertNull(InfoFormat.formatRupiah("Rp 5000"))
+    }
+
+    // ---------- formatIsoDate ----------
+
+    @Test
+    fun `formatIsoDate - ISO lokal jadi tanggal Indonesia`() {
+        assertEquals("24 Agu 2026", InfoFormat.formatIsoDate("2026-08-24"))
+        assertEquals("1 Sep 2026", InfoFormat.formatIsoDate("2026-09-01"))
+    }
+
+    @Test
+    fun `formatIsoDate - tak bisa diparse ditampilkan apa adanya (jujur)`() {
+        assertEquals("17-08-2026", InfoFormat.formatIsoDate("17-08-2026"))
+        assertNull(InfoFormat.formatIsoDate(null))
+        assertNull(InfoFormat.formatIsoDate(""))
     }
 
     // ---------- baris presensi ----------
@@ -142,7 +282,7 @@ class InfoFormatTest {
     }
 
     @Test
-    fun `kampusRows - nilai null dan kosong dilewati, key tak dikenal tampil mentah`() {
+    fun `kampusRows - nilai null dan kosong dilewati, key tak dikenal di-humanisasi`() {
         val rows = InfoFormat.kampusRows(
             """[{"TGL_SELESAI":null,"KEGIATAN":"","TGL_MULAI":"2026-08-24","ASING":"?"}]""",
         )
@@ -150,7 +290,7 @@ class InfoFormatTest {
         val map = rows.blocks.single().rows.toMap()
         assertEquals(2, map.size)
         assertEquals("2026-08-24", map["Tanggal Mulai"])
-        assertEquals("?", map["ASING"])
+        assertEquals("?", map["Asing"])
     }
 
     @Test

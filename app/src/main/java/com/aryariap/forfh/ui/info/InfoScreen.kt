@@ -19,7 +19,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,9 +32,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * Layar Info (V1.1 Task 8): rekap presensi per MK (hadir/tm/persen — web tidak punya
- * izin/sakit/alpa, ruling R22) + kartu info kampus per jenis (dataJson mentah → label
- * Indonesia). Semua angka dari Room (R-17); state jujur per R-27:
+ * Layar Info (V1.1 Task 8+9): rekap presensi per MK (hadir/tm/persen — web tidak punya
+ * izin/sakit/alpa, ruling R22) + kartu info kampus per jenis (section header Indonesia +
+ * kartu berdesain per jenis: identitas, daftar MK, HER, pembayaran, dst. — bukan dump
+ * mentah). Semua angka dari Room (R-17); state jujur per R-27:
  *
  * - QUEUED (worker menunggu jaringan) → banner kecil, BUKAN spinner layar penuh yang bisa
  *   tampil tanpa batas; state di bawahnya (kosong/putus/error/konten) tetap terlihat
@@ -207,9 +207,15 @@ private fun InfoContent(state: InfoUiState, onSync: () -> Unit) {
             items(state.presensi) { row -> PresensiCard(row) }
         }
 
+        // Satu section header per jenis (keluhan user: dump mentah tanpa judul section) —
+        // judul Indonesia per jenis, kartu berdesain per jenis di bawahnya.
         if (state.cards.isNotEmpty()) {
-            item { SectionHeader("Info kampus") }
-            items(state.cards) { card -> InfoKampusCard(card) }
+            items(state.cards, key = { it.jenis }) { card ->
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SectionHeader(card.title)
+                    InfoKampusCard(card)
+                }
+            }
         }
 
         // Footer umur data kampus (meta.lastSyncAt) — bukan waktu sync jadwal/tugas, dan
@@ -283,66 +289,5 @@ private fun PresensiCard(row: PresensiRow) {
     }
 }
 
-/**
- * Kartu info kampus per jenis: judul jenis + baris label:nilai per record (dataJson mentah
- * UPPERCASE_SNAKE → label Indonesia via InfoFormat). Nilai null/"" dilewati; record dipangkas
- * setelah batas tampil dengan catatan "+N lainnya" (jujur, pola web). Footer "Sinkron" hanya
- * saat updatedAt bisa diparse.
- */
-@Composable
-private fun InfoKampusCard(card: InfoCard) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(card.title, style = MaterialTheme.typography.titleMedium)
-            if (card.rows.blocks.isEmpty()) {
-                Text(
-                    text = "Tidak ada data untuk kategori ini.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                card.rows.blocks.forEachIndexed { i, block ->
-                    if (i > 0) HorizontalDivider()
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        block.rows.forEach { (label, value) ->
-                            Row {
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.weight(0.42f),
-                                )
-                                Text(
-                                    text = value,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(0.58f),
-                                )
-                            }
-                        }
-                    }
-                }
-                if (card.rows.skippedRecords > 0) {
-                    Text(
-                        text = "+${card.rows.skippedRecords} lainnya",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            card.updatedAt?.let { ua ->
-                Text(
-                    text = "Sinkron $ua",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
+// Kartu info kampus per jenis (kartu identitas, daftar MK, HER, dst.) pindah ke
+// InfoCardViews.kt — InfoKampusCard dipakai dari sana.

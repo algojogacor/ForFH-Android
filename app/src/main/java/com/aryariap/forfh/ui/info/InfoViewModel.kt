@@ -47,7 +47,8 @@ data class PresensiRow(
 data class InfoCard(
     val jenis: String,
     val title: String,
-    val rows: InfoRows,
+    /** Model tampil per jenis (kartu identitas, daftar MK, HER, dst.) — bukan dump mentah. */
+    val model: InfoCardModel,
     val updatedAt: String?,
 )
 
@@ -121,7 +122,7 @@ class InfoViewModel(
     private fun KampusInfoEntity.toCard() = InfoCard(
         jenis = jenis,
         title = InfoFormat.jenisTitle(jenis),
-        rows = InfoFormat.kampusRows(dataJson),
+        model = InfoCardModels.buildInfoCardModel(jenis, dataJson),
         updatedAt = InfoFormat.formatUpdatedAt(updatedAt),
     )
 }

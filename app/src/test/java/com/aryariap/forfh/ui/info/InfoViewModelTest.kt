@@ -124,8 +124,10 @@ class InfoViewModelTest {
         val card = s.cards.single()
         assertEquals("status_mhs", card.jenis)
         assertEquals("Status Mahasiswa", card.title)
-        assertEquals("626103051310", card.rows.blocks.single().rows.first { it.first == "NIM" }.second)
-        assertEquals("Aktif", card.rows.blocks.single().rows.first { it.first == "Status Akademik" }.second)
+        val identity = card.model as IdentityCard
+        assertEquals("626103051310", identity.nim)
+        assertEquals("Arya Rizky", identity.nama)
+        assertEquals("Aktif", identity.status)
         assertEquals("17 Agu 2026, 11:05", card.updatedAt) // UTC 04:05 → WIB 11:05
 
         assertEquals(true, s.connected)
