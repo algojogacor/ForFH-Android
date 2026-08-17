@@ -101,6 +101,8 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer, 
 
     // ---- InfoContainer (layar Info, Task 8) ----
     override val lastSyncStatus: Flow<String> get() = prefs.lastSyncStatus
+    /** Waktu sync terakhir, untuk footer "Terakhir sinkron" layar Tugas (pola Jadwal). */
+    override val lastSyncAt: Flow<Long> get() = prefs.lastSyncAt
 
     /**
      * Aktivitas worker sync (unique work "sync_once"): RUNNING saat benar-benar berjalan,

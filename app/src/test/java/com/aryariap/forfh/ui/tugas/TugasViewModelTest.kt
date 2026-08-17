@@ -14,6 +14,7 @@ import com.aryariap.forfh.network.TaskDto
 import com.aryariap.forfh.network.TasksResponse
 import com.aryariap.forfh.network.UserDto
 import com.aryariap.forfh.sync.SyncStateStore
+import com.aryariap.forfh.ui.info.SyncActivity
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -121,7 +123,17 @@ class TugasViewModelTest {
         override val tasksDao: TasksDao,
         override val apiService: ForfhApiService,
         override val syncState: SyncStateStore,
-    ) : TugasContainer
+    ) : TugasContainer {
+        /** Aktivitas sync (WorkManager di-fake) — indikator pull-to-refresh. */
+        override val syncActivity = MutableStateFlow(SyncActivity.IDLE)
+        /** Status/waktu sync terakhir — footer "Terakhir sinkron". */
+        override val lastSyncStatus = MutableStateFlow("")
+        override val lastSyncAt = MutableStateFlow(0L)
+        /** Jumlah panggilan enqueueSync (pull-to-refresh / tombol sync). */
+        var syncNowCount = 0
+
+        override val enqueueSync: () -> Unit = { syncNowCount++ }
+    }
 
     private fun task(id: String = "t1") = TaskEntity(
         id = id, courseId = null, courseName = null, courseCode = null, title = "Tugas $id",
@@ -152,12 +164,13 @@ class TugasViewModelTest {
         assertEquals(setOf("t1"), state.pending)
         assertEquals(1, api.markDoneIds.size) // PUT benar-benar berjalan di background
 
-        // PUT sukses → SYNCED, pending dibersihkan
+        // PUT sukses → SYNCED, pending dibersihkan; TANPA pesan sukses (Task 11: chip status
+        // sudah jadi "Selesai" — banner sukses hanya laporan ganda; message = null saja).
         api.completeSuccess()
         advanceUntilIdle()
         assertEquals(TaskEntity.SyncState.SYNCED, dao.items.value.single().syncState)
         assertTrue(state.pending.isEmpty())
-        assertEquals("Tugas ditandai selesai.", viewModel.state.value.message)
+        assertNull(viewModel.state.value.message)
     }
 
     @Test
@@ -236,5 +249,72 @@ class TugasViewModelTest {
         advanceUntilIdle()
         assertEquals(TaskEntity.SyncState.SYNCED, dao.items.value.single().syncState)
         assertTrue(state.pending.isEmpty())
+    }
+
+    @Test
+    fun `syncNow - memanggil enqueueSync (pull-to-refresh)`() = runTest(dispatcher) {
+        val dao = FakeTasksDao(initial = listOf(task()))
+        val container = FakeTugasContainer(dao, FakeApi(), FakeSyncState())
+        val viewModel = TugasViewModel(container)
+        advanceUntilIdle() // koleksi Room flow pertama
+
+        viewModel.syncNow()
+
+        assertEquals(1, container.syncNowCount)
+        // syncNow tidak menyentuh data — list tetap render dari Room (cache-first)
+        assertEquals(1, viewModel.state.value.items.size)
+    }
+
+    @Test
+    fun `syncActivity RUNNING sampai ke state - indikator pull-to-refresh`() = runTest(dispatcher) {
+        val container = FakeTugasContainer(FakeTasksDao(initial = listOf(task())), FakeApi(), FakeSyncState())
+        val viewModel = TugasViewModel(container)
+
+        assertEquals(SyncActivity.IDLE, viewModel.state.value.syncActivity)
+
+        container.syncActivity.value = SyncActivity.RUNNING
+        advanceUntilIdle()
+        assertEquals(SyncActivity.RUNNING, viewModel.state.value.syncActivity)
+
+        container.syncActivity.value = SyncActivity.IDLE
+        advanceUntilIdle()
+        assertEquals(SyncActivity.IDLE, viewModel.state.value.syncActivity)
+    }
+
+    @Test
+    fun `consumeMessage - pesan sekali-pakai dibersihkan setelah banner tampil`() = runTest(dispatcher) {
+        val dao = FakeTasksDao(initial = listOf(task()))
+        val api = FakeApi()
+        val viewModel = vm(dao, api, FakeSyncState())
+
+        api.failWith = IOException("no network")
+        viewModel.markDone("t1")
+        advanceUntilIdle()
+        assertEquals("Gagal menandai selesai. Cek koneksi, coba lagi.", viewModel.state.value.message)
+
+        viewModel.consumeMessage()
+        assertNull(viewModel.state.value.message)
+    }
+
+    @Test
+    fun `retry sukses membersihkan pesan gagal sebelumnya`() = runTest(dispatcher) {
+        val dao = FakeTasksDao(initial = listOf(task()))
+        val api = FakeApi()
+        val viewModel = vm(dao, api, FakeSyncState())
+
+        // gagal dulu → banner gagal
+        api.failWith = IOException("no network")
+        viewModel.markDone("t1")
+        advanceUntilIdle()
+        assertEquals("Gagal menandai selesai. Cek koneksi, coba lagi.", viewModel.state.value.message)
+
+        // retry sukses → banner gagal TIDAK boleh tersisa (tanpa pesan sukses baru)
+        api.failWith = null
+        viewModel.markDone("t1")
+        advanceUntilIdle()
+        api.completeSuccess()
+        advanceUntilIdle()
+        assertNull(viewModel.state.value.message)
+        assertEquals(TaskEntity.SyncState.SYNCED, dao.items.value.single().syncState)
     }
 }

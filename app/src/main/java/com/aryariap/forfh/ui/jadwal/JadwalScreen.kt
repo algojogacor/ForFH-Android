@@ -24,6 +24,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aryariap.forfh.ui.UiFormat
+import com.aryariap.forfh.ui.info.SyncActivity
 import com.aryariap.forfh.ui.theme.ForfhColors
 import java.time.Instant
 import java.time.ZoneId
@@ -85,44 +87,53 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
             }
         },
     ) { padding ->
-        LazyColumn(
+        // Pull-to-refresh: tarik → sync satu-kali (Task 11). Indikator hanya saat worker
+        // benar-benar RUNNING; QUEUED (menunggu jaringan) tidak memutar spinner tanpa batas
+        // (semantik yang sama dengan layar Info).
+        PullToRefreshBox(
+            isRefreshing = state.syncActivity == SyncActivity.RUNNING,
+            onRefresh = viewModel::syncNow,
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            if (tab == 0) {
-                // Kartu "Berikutnya": di atas daftar hari ini, hanya saat ada data (kelas atau alarm).
-                if (nextUp.nextClass != null || nextUp.nextAlarm != null) {
-                    item {
-                        NextUpCard(
-                            state = nextUp,
-                            nowMs = nowMs,
-                            onMute = nextUpViewModel::muteToday,
-                            onUnmute = nextUpViewModel::unmuteToday,
-                        )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (tab == 0) {
+                    // Kartu "Berikutnya": di atas daftar hari ini, hanya saat ada data (kelas atau alarm).
+                    if (nextUp.nextClass != null || nextUp.nextAlarm != null) {
+                        item {
+                            NextUpCard(
+                                state = nextUp,
+                                nowMs = nowMs,
+                                onMute = nextUpViewModel::muteToday,
+                                onUnmute = nextUpViewModel::unmuteToday,
+                            )
+                        }
+                    }
+                    items(state.today) { item -> KuliahCard(item) }
+                } else {
+                    items(state.week) { hari ->
+                        if (hari.items.isNotEmpty()) {
+                            Text(
+                                text = hari.label,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                            hari.items.forEach { KuliahCard(it) }
+                        }
                     }
                 }
-                items(state.today) { item -> KuliahCard(item) }
-            } else {
-                items(state.week) { hari ->
-                    if (hari.items.isNotEmpty()) {
-                        Text(
-                            text = hari.label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                        hari.items.forEach { KuliahCard(it) }
-                    }
+                item {
+                    Text(
+                        text = "Terakhir sinkron: ${UiFormat.syncInfo(state.lastSyncStatus, state.lastSyncAt)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
-            }
-            item {
-                Text(
-                    text = "Terakhir sinkron: ${UiFormat.syncInfo(state.lastSyncStatus, state.lastSyncAt)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
             }
         }
     }
