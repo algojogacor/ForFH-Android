@@ -182,10 +182,32 @@ class InfoFormatTest {
     }
 
     @Test
-    fun `formatIsoDate - tak bisa diparse ditampilkan apa adanya (jujur)`() {
-        assertEquals("17-08-2026", InfoFormat.formatIsoDate("17-08-2026"))
+    fun `formatIsoDate - ISO lokal dengan offset (format kalender akademik) jadi tanggal dan jam`() {
+        assertEquals("3 Agu 2026 08:00", InfoFormat.formatIsoDate("2026-08-03T08:00:00+07:00"))
+        assertEquals("2 Sep 2026 16:00", InfoFormat.formatIsoDate("2026-09-02T16:00:00+07:00"))
+    }
+
+    @Test
+    fun `formatIsoDate - offset tanpa detik tetap diparse`() {
+        assertEquals("3 Agu 2026 08:00", InfoFormat.formatIsoDate("2026-08-03T08:00+07:00"))
+    }
+
+    @Test
+    fun `formatIsoDate - tanggal polos dengan hari dua digit tidak di-pad`() {
+        assertEquals("12 Okt 2026", InfoFormat.formatIsoDate("2026-10-12"))
+    }
+
+    @Test
+    fun `formatIsoDate - null dan blank - null`() {
         assertNull(InfoFormat.formatIsoDate(null))
         assertNull(InfoFormat.formatIsoDate(""))
+        assertNull(InfoFormat.formatIsoDate("   "))
+    }
+
+    @Test
+    fun `formatIsoDate - tak bisa diparse ditampilkan apa adanya (jujur)`() {
+        assertEquals("17-08-2026", InfoFormat.formatIsoDate("17-08-2026"))
+        assertEquals("2026-08-03T08:00:00+08:00x", InfoFormat.formatIsoDate("2026-08-03T08:00:00+08:00x"))
     }
 
     // ---------- baris presensi ----------

@@ -3,6 +3,7 @@ package com.aryariap.forfh.ui.info
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -164,6 +165,7 @@ object InfoFormat {
 
     private val updatedFmt = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", Locale("id", "ID"))
     private val dateFmt = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
+    private val dateTimeFmt = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", Locale("id", "ID"))
     private val wib = ZoneId.of("Asia/Jakarta")
 
     /** Label Indonesia; field tak dikenal → humanize Title Case (bukan key mentah, fix review). */
@@ -211,13 +213,19 @@ object InfoFormat {
         return "Rp $groupedText"
     }
 
-    /** "2026-08-24" (ISO lokal) → "24 Agu 2026"; tak bisa diparse → apa adanya (jujur). */
+    /**
+     * "2026-08-24" (ISO lokal) → "24 Agu 2026"; "2026-08-03T08:00:00+07:00" (ISO lokal + offset,
+     * detik opsional — format TGL_MULAI/TGL_SELESAI kalender akademik di device) →
+     * "3 Agu 2026 08:00" (jam di offset aslinya, +07:00 = WIB utk data Kampus Kita);
+     * tak bisa diparse → apa adanya (jujur).
+     */
     fun formatIsoDate(raw: String?): String? {
         val s = raw?.trim().orEmpty()
         if (s.isEmpty()) return null
-        val parsed = runCatching { LocalDate.parse(s) }.getOrNull()
+        val local = runCatching { LocalDate.parse(s) }.getOrNull()
             ?: runCatching { LocalDateTime.parse(s).toLocalDate() }.getOrNull()
-        return parsed?.format(dateFmt) ?: s
+        if (local != null) return local.format(dateFmt)
+        return runCatching { OffsetDateTime.parse(s).format(dateTimeFmt) }.getOrNull() ?: s
     }
 
     /**
