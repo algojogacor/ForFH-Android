@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,8 +39,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.theme.ForfhColors
+import java.time.Instant
 import java.time.ZoneId
-import java.time.ZonedDateTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -48,15 +49,22 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
     val state by viewModel.state.collectAsState()
     val nextUp by nextUpViewModel.state.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
+    // Jam lokal UI untuk countdown "Berikutnya": ditulis tiap tick (LaunchedEffect di bawah),
+    // dibaca NextUpCard via parameter → saat berubah, kartu recompose dan teks countdown
+    // (dihitung dari nowMs saat komposisi) ikut berjalan. Tick di UI, bukan di ViewModel.
+    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    // Ticker kartu "Berikutnya": refresh 30 dtk HANYA di tab "Hari ini" (tab 0) — countdown
-    // ada di tab itu, tab "Seminggu" tidak menampilkan waktu real-time jadi tak perlu refresh
-    // berkala. Akurasi menit cukup untuk countdown, hemat baterai (bukan 1 dtk). Ticker di UI,
-    // ViewModel hanya menyediakan refresh(). Berhenti otomatis saat layar keluar komposisi;
-    // ganti tab → efek di-cancel & restart, jadi kembali ke tab 0 langsung refresh sekali.
+    // Ticker kartu "Berikutnya": tick + refresh 30 dtk HANYA di tab "Hari ini" (tab 0) —
+    // countdown ada di tab itu, tab "Seminggu" tidak menampilkan waktu real-time jadi tak perlu
+    // tick berkala. Akurasi menit cukup untuk countdown, hemat baterai (bukan 1 dtk). Tick di UI:
+    // refresh() saja tidak cukup — state VM identik (kelas/alarm sama) → Compose skip
+    // recomposition; penulisan nowMs selalu mengubah nilai → recompose pasti terjadi.
+    // Berhenti otomatis saat layar keluar komposisi; ganti tab → efek di-cancel & restart,
+    // jadi kembali ke tab 0 langsung tick + refresh sekali.
     LaunchedEffect(tab) {
         if (tab != 0) return@LaunchedEffect
         while (isActive) {
+            nowMs = System.currentTimeMillis()
             nextUpViewModel.refresh()
             delay(30_000)
         }
@@ -88,6 +96,7 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                     item {
                         NextUpCard(
                             state = nextUp,
+                            nowMs = nowMs,
                             onMute = nextUpViewModel::muteToday,
                             onUnmute = nextUpViewModel::unmuteToday,
                         )
@@ -125,9 +134,17 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
  * saat ada data; baris di dalamnya opsional.
  */
 @Composable
-private fun NextUpCard(state: NextUpUiState, onMute: () -> Unit, onUnmute: () -> Unit) {
+private fun NextUpCard(
+    state: NextUpUiState,
+    nowMs: Long = System.currentTimeMillis(),
+    onMute: () -> Unit,
+    onUnmute: () -> Unit,
+) {
     val wib = ZoneId.of("Asia/Jakarta")
-    val now = ZonedDateTime.now(wib)
+    // WIB diturunkan dari nowMs (tick UI dari JadwalScreen). Default = jam saat komposisi,
+    // sehingga pemakaian kartu di luar screen tetap berperilaku sama; dengan nowMs yang
+    // ditick, perubahan nilai memaksa recompose → countdown di bawah terhitung ulang.
+    val now = Instant.ofEpochMilli(nowMs).atZone(wib)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
@@ -150,14 +167,15 @@ private fun NextUpCard(state: NextUpUiState, onMute: () -> Unit, onUnmute: () ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             // "{nama}" = kode course (contoh plan: "PIH"), fallback nama lengkap.
+                            // Tanpa maxLines/ellipsis: baris membungkus alami bila sempit (jarang,
+                            // barisnya pendek) — kode course + jam selalu terbaca utuh.
                             text = "Kelas berikutnya: ${kls.courseCode ?: kls.courseName} (${UiFormat.timeOf(start)})",
                             style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false),
                         )
-                        // Countdown tidak pernah terpotong: bagian nama yang panjang di-ellipsis,
-                        // bagian "dalam ..." selalu utuh (inilah informasi inti kartu).
+                        // Countdown ("dalam ...") Text terpisah tanpa batas lebar: diukur penuh
+                        // oleh Row dan tidak pernah terpotong — nama yang panjang membungkus di
+                        // sisa ruang (weight), bukan memotong teks ini.
                         Text(
                             text = " · dalam ${UiFormat.countdownTo(now, start)}",
                             style = MaterialTheme.typography.titleMedium,
