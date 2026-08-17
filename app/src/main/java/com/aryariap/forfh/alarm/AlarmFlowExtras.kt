@@ -11,6 +11,13 @@ data class ClassExtras(
     val triggerAtMillis: Long,
 )
 
+/** Extras alarm deadline tugas H-1 (kind TASK_DEADLINE) — identity butuh taskId. */
+data class DeadlineExtras(
+    val taskId: String,
+    val occurrenceDate: String,
+    val triggerAtMillis: Long,
+)
+
 /**
  * Parse ketat extras alarm dari Intent. T6 menulis semua extras sebagai String
  * (Bundle.getIntExtra/getLongExtra pada nilai String melempar internal CCE → defaultValue -1,
@@ -34,6 +41,19 @@ object AlarmFlowExtras {
         val trigger = triggerStr?.toLongOrNull() ?: return null
         if (offset < 0 || trigger < 0) return null
         return ClassExtras(id, offset, date, trigger)
+    }
+
+    /** null-safe + parse ketat; trigger negatif → null (pola parseClassExtras). */
+    fun parseDeadlineExtras(
+        taskId: String?,
+        occurrenceDate: String?,
+        triggerStr: String?,
+    ): DeadlineExtras? {
+        val id = taskId ?: return null
+        val date = occurrenceDate ?: return null
+        val trigger = triggerStr?.toLongOrNull() ?: return null
+        if (trigger < 0) return null
+        return DeadlineExtras(id, date, trigger)
     }
 
     /** slotHour deterministik: trigger slot S tanggal D = D pukul S:00 WIB. Parse date gagal → null, bukan throw. */

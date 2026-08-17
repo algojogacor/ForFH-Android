@@ -4,12 +4,18 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences as CorePreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.aryariap.forfh.alarm.AlarmFlowHandler
 import com.aryariap.forfh.alarm.AlarmPlanner
 import com.aryariap.forfh.alarm.AlarmScheduler
 import com.aryariap.forfh.alarm.AndroidAlarmApi
 import com.aryariap.forfh.alarm.ForfhNotifications
 import com.aryariap.forfh.data.db.AppDatabase
+import com.aryariap.forfh.data.db.KampusInfoDao
+import com.aryariap.forfh.data.db.ScheduledAlarmsDao
+import com.aryariap.forfh.data.db.SchedulesDao
+import com.aryariap.forfh.data.db.TasksDao
 import com.aryariap.forfh.data.prefs.Preferences
 import com.aryariap.forfh.data.prefs.SecureCookieStore
 import com.aryariap.forfh.data.prefs.SessionEvent
@@ -18,18 +24,48 @@ import com.aryariap.forfh.network.ApiClient
 import com.aryariap.forfh.network.ForfhApiService
 import com.aryariap.forfh.network.PersistentCookieJar
 import com.aryariap.forfh.sync.AlarmRescheduler
+import com.aryariap.forfh.sync.RescheduleAll
 import com.aryariap.forfh.sync.SyncRepository
+import com.aryariap.forfh.sync.SyncStateStore
+import com.aryariap.forfh.sync.SyncWorker
+import com.aryariap.forfh.ui.info.InfoContainer
+import com.aryariap.forfh.ui.info.SyncActivity
+import com.aryariap.forfh.ui.tugas.TugasContainer
+import com.aryariap.forfh.widget.refreshAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-class AppContainer(private val app: ForfhApp) {
+/**
+ * Ketergantungan kartu "Berikutnya" (NextUpViewModel) — kontrak komposisi yang dipenuhi
+ * AppContainer; test memakai fake. Memakai seam RescheduleAll supaya quick mute bisa di-fake.
+ */
+interface NextUpContainer {
+    val schedulesDao: SchedulesDao
+    val alarmsDao: ScheduledAlarmsDao
+    val prefs: Preferences
+    val rescheduler: RescheduleAll
+    val planner: AlarmPlanner
+}
+
+class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer, TugasContainer {
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val context: android.content.Context get() = app
 
     val database: AppDatabase by lazy { AppDatabase.build(app) }
+
+    override val schedulesDao: SchedulesDao by lazy { database.schedulesDao() }
+    override val alarmsDao: ScheduledAlarmsDao by lazy { database.scheduledAlarmsDao() }
+    override val kampusInfoDao: KampusInfoDao by lazy { database.kampusInfoDao() }
+    override val tasksDao: TasksDao by lazy { database.tasksDao() }
+
+    /** Pending mark selesai + lastSync — implementasi SyncStateStore (Preferences). */
+    override val syncState: SyncStateStore get() = prefs
 
     private val dataStore: DataStore<CorePreferences> by lazy {
         PreferenceDataStoreFactory.create(
@@ -38,7 +74,7 @@ class AppContainer(private val app: ForfhApp) {
         )
     }
 
-    val prefs: Preferences by lazy { Preferences(dataStore) }
+    override val prefs: Preferences by lazy { Preferences(dataStore) }
     val secureCookieStore: SecureCookieStore by lazy { SecureCookieStore(dataStore) }
     val sessionManager: SessionManager by lazy { SessionManager(secureCookieStore) }
 
@@ -46,19 +82,49 @@ class AppContainer(private val app: ForfhApp) {
         PersistentCookieJar(secureCookieStore, applicationScope)
     }
 
-    val apiService: ForfhApiService by lazy {
+    override val apiService: ForfhApiService by lazy {
         ApiClient.retrofit(ApiClient.build(cookieJar, sessionManager))
     }
 
-    val planner: AlarmPlanner by lazy { AlarmPlanner() }
+    override val planner: AlarmPlanner by lazy { AlarmPlanner() }
     val scheduler: AlarmScheduler by lazy { AlarmScheduler(AndroidAlarmApi(app)) }
-    val rescheduler: AlarmRescheduler by lazy {
-        AlarmRescheduler(planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs)
+    override val rescheduler: AlarmRescheduler by lazy {
+        AlarmRescheduler(
+            planner, scheduler, database.scheduledAlarmsDao(), database.schedulesDao(), prefs,
+            database.tasksDao(),
+            // Task 4: setelah reschedule alarm (sync sukses, mute/unmute, offset, exact-restore)
+            // widget ikut di-refresh; kegagalan refresh non-fatal (refreshAll menelan sendiri).
+            onAlarmsChanged = { refreshAll(app) },
+        )
     }
     val notifications: ForfhNotifications by lazy { ForfhNotifications(app) }
 
+    // ---- InfoContainer (layar Info, Task 8) ----
+    override val lastSyncStatus: Flow<String> get() = prefs.lastSyncStatus
+    /** Waktu sync terakhir, untuk footer "Terakhir sinkron" layar Tugas (pola Jadwal). */
+    override val lastSyncAt: Flow<Long> get() = prefs.lastSyncAt
+
+    /**
+     * Aktivitas worker sync (unique work "sync_once"): RUNNING saat benar-benar berjalan,
+     * QUEUED saat menunggu jaringan (ENQUEUED — bisa menunggu tanpa batas, jadi layar
+     * memperlakukannya sebagai banner, bukan spinner layar penuh; fix review).
+     */
+    override val syncActivity: Flow<SyncActivity> by lazy {
+        WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(SyncWorker.UNIQUE_SYNC_ONCE)
+            .map { infos ->
+                when {
+                    infos.any { it.state == WorkInfo.State.RUNNING } -> SyncActivity.RUNNING
+                    infos.any { it.state == WorkInfo.State.ENQUEUED } -> SyncActivity.QUEUED
+                    else -> SyncActivity.IDLE
+                }
+            }
+            .distinctUntilChanged()
+    }
+
+    override val enqueueSync: () -> Unit = { SyncWorker.enqueueOneShot(app) }
+
     val syncRepository: SyncRepository by lazy {
-        SyncRepository(apiService, database.schedulesDao(), database.tasksDao(), prefs)
+        SyncRepository(apiService, database.schedulesDao(), database.tasksDao(), prefs, database.kampusInfoDao())
     }
 
     val alarmFlow: AlarmFlowHandler by lazy {
@@ -81,6 +147,9 @@ class AppContainer(private val app: ForfhApp) {
             database.scheduledAlarmsDao().clearAll()
             database.schedulesDao().clearAll()
             database.tasksDao().clearAll()
+            database.kampusInfoDao().clearKampusInfo()
+            database.kampusInfoDao().clearPresensiRecap()
+            database.kampusInfoDao().clearKampusMeta()
             cookieJar.clear() // T4-M3: evict cookie in-memory — WAJIB sebelum secureCookieStore.clear()
             secureCookieStore.clear()
             prefs.setLastSync(0L, "")

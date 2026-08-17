@@ -42,13 +42,16 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
         private const val MODE = "mode"
         private const val MODE_RECONCILE = "reconcile"
 
+        /** Nama unique work sync satu-kali — dipakai juga oleh AppContainer (sinyal syncRunning layar Info). */
+        const val UNIQUE_SYNC_ONCE = "sync_once"
+
         /** Login sukses / tombol "Coba lagi" / pull-to-refresh. */
         fun enqueueOneShot(context: Context) {
             val request = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setInputData(workDataOf(MODE to "sync"))
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork("sync_once", ExistingWorkPolicy.REPLACE, request)
+            WorkManager.getInstance(context).enqueueUniqueWork(UNIQUE_SYNC_ONCE, ExistingWorkPolicy.REPLACE, request)
         }
 
         /** Safety net: ±6 jam, network-constrained — bukan timing guarantee (§8.7, §9). */

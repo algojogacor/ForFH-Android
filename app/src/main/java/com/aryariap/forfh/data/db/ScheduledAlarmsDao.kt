@@ -17,6 +17,13 @@ interface ScheduledAlarmsDao {
     @Query("SELECT * FROM scheduled_alarms WHERE id = :id")
     fun getByIdOnce(id: String): ScheduledAlarmEntity?
 
+    /** Alarm kuliah berikutnya (kartu "Berikutnya" V1.1): CLASS_ALARM dengan trigger masa depan terdekat. */
+    @Query(
+        "SELECT * FROM scheduled_alarms WHERE kind = 'CLASS_ALARM' AND triggerAtMillis > :nowMs " +
+            "ORDER BY triggerAtMillis ASC LIMIT 1"
+    )
+    fun nextClassAlarmOnce(nowMs: Long): ScheduledAlarmEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun upsert(row: ScheduledAlarmEntity)
 

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryariap.forfh.AppContainer
 import com.aryariap.forfh.ui.UiFormat
+import com.aryariap.forfh.ui.info.SyncActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -34,6 +35,8 @@ data class JadwalUiState(
     val week: List<JadwalHari> = emptyList(),
     val lastSyncStatus: String = "",
     val lastSyncAt: Long = 0L,
+    /** Aktivitas worker sync, indikator pull-to-refresh (RUNNING). */
+    val syncActivity: SyncActivity = SyncActivity.IDLE,
 )
 
 class JadwalViewModel(private val container: AppContainer) : ViewModel() {
@@ -74,5 +77,13 @@ class JadwalViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             container.prefs.lastSyncAt.collect { t -> _state.value = _state.value.copy(lastSyncAt = t) }
         }
+        viewModelScope.launch {
+            container.syncActivity.collect { a -> _state.value = _state.value.copy(syncActivity = a) }
+        }
+    }
+
+    /** Sinkron sekarang: fire-and-forget via WorkManager (pola InfoViewModel.syncNow). */
+    fun syncNow() {
+        container.enqueueSync()
     }
 }

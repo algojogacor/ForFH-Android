@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryariap.forfh.ForfhApp
+import com.aryariap.forfh.widget.refreshAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -58,6 +59,8 @@ class FullScreenAlarmViewModel(app: Application) : AndroidViewModel(app) {
                     snoozeCount = row?.snoozeCount ?: 0,
                     snoozeAvailable = row != null && SnoozeCounter.canSnooze(row.snoozeCount),
                 )
+                // Task 4: alarm di-snooze → triggerAtMillis berubah → refresh widget.
+                refreshWidget()
             }
         }
     }
@@ -70,6 +73,17 @@ class FullScreenAlarmViewModel(app: Application) : AndroidViewModel(app) {
             if (!snoozedThisSession && row.snoozeCount == 0) {
                 alarmsDao.deleteById(id)
             }
+            // Task 4: alarm ditutup (occurrence selesai) → refresh widget.
+            refreshWidget()
         }
+    }
+
+    /**
+     * Refresh widget dari applicationScope, bukan viewModelScope: Activity bisa langsung
+     * finish setelah close/snooze (viewModelScope dibatalkan), refresh harus tetap jalan.
+     * Non-fatal: refreshAll menelan kegagalannya sendiri.
+     */
+    private fun refreshWidget() {
+        container.applicationScope.launch { refreshAll(getApplication()) }
     }
 }

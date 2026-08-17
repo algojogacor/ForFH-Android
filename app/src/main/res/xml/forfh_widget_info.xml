@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget jadwal ForFH: target 4x2 sel (Android 12+); updatePeriodMillis 30 mnt (safety net);
+     update utama event-driven (WidgetUpdater.refreshAll, lihat WidgetUpdater.kt).
+
+     Perubahan V1.1 (layout responsif): minWidth/minHeight/minResize diturunkan dari
+     250dp/250dp/140dp menjadi 150dp/110dp agar launcher (termasuk MIUI) menawarkan ukuran
+     kecil ~2x2 sel, sama dengan ukuran compact ForfhWidget (150x110, SizeMode.Responsive).
+     Sebelumnya min 250dp memaksa penempatan lebar penuh; saat dipaksa kecil, render lama
+     ter-clip. targetCellWidth/Height tetap 4x2 (ukuran default saat ditambahkan); ukuran
+     terkecil yang ditawarkan sistem kini = compact, dan sistem menskalakan render
+     SizeMode.Responsive ke ukuran aktual. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="150dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="150dp"
+    android:minResizeHeight="110dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:description="@string/widget_description"
+    android:updatePeriodMillis="1800000" />

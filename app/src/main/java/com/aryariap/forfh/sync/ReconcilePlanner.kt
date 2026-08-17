@@ -4,6 +4,7 @@ import com.aryariap.forfh.alarm.AlarmFlowExtras
 import com.aryariap.forfh.alarm.AlarmPlanner
 import com.aryariap.forfh.data.db.ScheduleEntity
 import com.aryariap.forfh.data.db.ScheduledAlarmEntity
+import com.aryariap.forfh.data.db.TaskEntity
 import java.time.LocalTime
 import java.time.ZonedDateTime
 
@@ -24,6 +25,7 @@ sealed interface AlarmOp {
  * snoozeCount tidak pernah turun oleh proses lain.
  */
 class ReconcilePlanner(private val planner: AlarmPlanner) {
+    private val deadlinePlanner = TaskDeadlinePlanner()
 
     fun computeOps(
         current: List<ScheduledAlarmEntity>,
@@ -32,8 +34,9 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
         now: ZonedDateTime,
         fullRebuild: Boolean,
         skipDates: Set<String> = emptySet(),
+        tasks: List<TaskEntity>,
     ): List<AlarmOp> {
-        val desired = desiredRows(schedules, offsetsByDay, now, skipDates)
+        val desired = desiredRows(schedules, offsetsByDay, now, skipDates, tasks)
         val currentById = current.associateBy { it.id }
         val nowMs = now.toInstant().toEpochMilli()
         val ops = mutableListOf<AlarmOp>()
@@ -65,6 +68,7 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
         offsetsByDay: Map<Int, List<Int>>,
         now: ZonedDateTime,
         skipDates: Set<String>,
+        tasks: List<TaskEntity>,
     ): Map<String, ScheduledAlarmEntity> {
         // Aturan pengguna: alarm kelas HANYA untuk kuliah pertama hari itu (start paling awal).
         // Saat kuliah pertama mulai user masih di rumah (mungkin tidur); kuliah berikutnya ia
@@ -107,6 +111,16 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
                 triggerAtMillis = trigger,
                 snoozeCount = 0,
             )
+        }
+        // Notifikasi deadline H-1 (TaskDeadlinePlanner): skipDates/mute TIDAK menyentuh
+        // TASK_DEADLINE — mute hanya untuk CLASS_ALARM (aturan user "Matikan seluruh alarm").
+        // R19: row triggerAtMillis <= now dilarang masuk desired — alarm trigger masa lalu tidak
+        // boleh menyala saat schedule; row stale yang tersimpan dibersihkan pass cancel (fullRebuild).
+        val nowMs = now.toInstant().toEpochMilli()
+        for (row in deadlinePlanner.computeTasks(tasks, now)) {
+            if (row.triggerAtMillis > nowMs) {
+                result[row.id] = row
+            }
         }
         return result
     }

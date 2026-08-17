@@ -53,4 +53,27 @@ class AlarmFlowExtrasTest {
     fun `occurrenceDate rusak - null bukan throw`() {
         assertNull(AlarmFlowExtras.resolveTaskSlot("bukan-tanggal", 0L, zone))
     }
+
+    @Test
+    fun `deadline extras valid - semua field terisi`() {
+        assertEquals(
+            DeadlineExtras("t1", "2026-08-18", 1750000000000L),
+            AlarmFlowExtras.parseDeadlineExtras("t1", "2026-08-18", "1750000000000"),
+        )
+    }
+
+    @Test
+    fun `deadline extras taskId kosong - null`() {
+        assertNull(AlarmFlowExtras.parseDeadlineExtras(null, "2026-08-18", "1750000000000"))
+    }
+
+    @Test
+    fun `deadline extras trigger rusak - null`() {
+        assertNull(AlarmFlowExtras.parseDeadlineExtras("t1", "2026-08-18", "xyz"))
+    }
+
+    @Test
+    fun `deadline extras trigger negatif - null`() {
+        assertNull(AlarmFlowExtras.parseDeadlineExtras("t1", "2026-08-18", "-5"))
+    }
 }

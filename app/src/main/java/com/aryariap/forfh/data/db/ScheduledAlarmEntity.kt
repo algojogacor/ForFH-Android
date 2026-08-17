@@ -12,7 +12,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "scheduled_alarms")
 data class ScheduledAlarmEntity(
     @PrimaryKey val id: String,
-    val kind: String,              // "CLASS_ALARM" | "TASK_REMINDER"
+    val kind: String,              // "CLASS_ALARM" | "TASK_REMINDER" | "TASK_DEADLINE"
     val scheduleId: String?,       // null utk task slot
     val offsetMinutes: Int,        // 0 utk task slot
     val occurrenceDate: String,    // "2026-08-17" (LocalDate WIB)

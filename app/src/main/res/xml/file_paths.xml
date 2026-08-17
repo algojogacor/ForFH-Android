@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider: hanya direktori log aplikasi (filesDir/logs) yang boleh di-share.
+     files-path = context.filesDir; path "logs/" membatasi ke subdirektori log saja,
+     tidak ada direktori lain yang terekspos. -->
+<paths>
+    <files-path name="logs" path="logs/" />
+</paths>

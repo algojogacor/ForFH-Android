@@ -24,8 +24,8 @@ android {
         applicationId = "com.aryariap.forfh"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -61,6 +61,12 @@ android {
     packaging {
         resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
     }
+
+    // android.util.Log tidak dimock di unit test JVM murni → kembalikan default (0)
+    // supaya path logging (mis. SyncRepository.syncKampusInfo) tidak crash di test.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 // Built-in Kotlin AGP 9: blok kotlin{} top-level (bukan android.kotlinOptions)
@@ -90,6 +96,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.work.runtime)
     implementation(libs.coroutines.android)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
 }

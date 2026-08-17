@@ -23,6 +23,7 @@ class Preferences(private val dataStore: DataStore<Preferences>) : SyncStateStor
     private val keyLastSyncAt = longPreferencesKey("last_sync_at")
     private val keyLastSyncStatus = stringPreferencesKey("last_sync_status")
     private val keyMutedDate = stringPreferencesKey("alarms_muted_date")
+    private val keyPendingMarkDone = stringSetPreferencesKey("pending_mark_done")
 
     val offsets: Flow<AlarmOffsets> = dataStore.data.map { p ->
         val hasNewKeys = (0..6).any { p[dayKey(it)] != null }
@@ -69,4 +70,27 @@ class Preferences(private val dataStore: DataStore<Preferences>) : SyncStateStor
 
     override suspend fun lastSyncAt(): Long = dataStore.data.first()[keyLastSyncAt] ?: 0L
     override suspend fun lastSyncStatus(): String = dataStore.data.first()[keyLastSyncStatus] ?: ""
+
+    // ---- Pending mark selesai (Task 10, ruling R25): stringSet id tugas yang PUT-nya belum
+    // dikonfirmasi server — sync me-re-apply status ini setelah wipe-and-replace. ----
+
+    override suspend fun pendingMarkDone(): Set<String> =
+        dataStore.data.first()[keyPendingMarkDone].orEmpty()
+
+    override suspend fun setPendingMarkDone(ids: Set<String>) {
+        dataStore.edit { p ->
+            if (ids.isEmpty()) p.remove(keyPendingMarkDone) else p[keyPendingMarkDone] = ids
+        }
+    }
+
+    override suspend fun addPendingMarkDone(id: String) {
+        dataStore.edit { p -> p[keyPendingMarkDone] = (p[keyPendingMarkDone] ?: emptySet()) + id }
+    }
+
+    override suspend fun removePendingMarkDone(id: String) {
+        dataStore.edit { p ->
+            val rest = (p[keyPendingMarkDone] ?: emptySet()) - id
+            if (rest.isEmpty()) p.remove(keyPendingMarkDone) else p[keyPendingMarkDone] = rest
+        }
+    }
 }

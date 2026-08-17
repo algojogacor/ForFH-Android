@@ -1,5 +1,6 @@
 package com.aryariap.forfh.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -21,4 +22,21 @@ data class TaskEntity(
     val priority: String,                // low|medium|high|urgent
     val courseColor: String?,            // dari course row API, utk badge warna
     val subtasksJson: String?,           // JSON encode List<SubtaskDto> — spec §7: detail tugas WAJIB tampilkan subtasks
-)
+    /**
+     * Keadaan sinkron mark selesai (Task 10): PENDING (PUT sedang berjalan / belum dikonfirmasi
+     * server), SYNCED (server sudah konfirmasi), FAILED (PUT gagal — retry via ketuk chip di UI).
+     * Default 'SYNCED' (migrasi V2→V3, ruling R24: baris lama dianggap tersinkron; tidak ada
+     * yang pending sebelum fitur ini ada).
+     */
+    @ColumnInfo(defaultValue = "'SYNCED'")
+    val syncState: String = "SYNCED",
+) {
+    /** Nilai kolom syncState — konstanta (bukan enum) mengikuti gaya kolom lain yang String. */
+    object SyncState {
+        const val PENDING = "PENDING"
+        const val SYNCED = "SYNCED"
+        const val FAILED = "FAILED"
+    }
+
+    companion object
+}
