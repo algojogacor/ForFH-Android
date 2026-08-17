@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -29,8 +30,9 @@ class ForfhNotifications(private val context: Context) {
 
     fun ensureChannels() {
         if (Build.VERSION.SDK_INT >= 26) {
-            // Migrasi suara alarm → Extreme.mp3: sound channel TIDAK bisa diubah setelah
-            // create (API 26+ mengunci sound saat channel dibuat). Channel lama dari
+            // Migrasi suara alarm → Extreme.mp3 (v2) + audio attributes USAGE_ALARM (v3):
+            // sound & audio attributes channel TIDAK bisa diubah setelah create
+            // (API 26+ mengunci keduanya saat channel dibuat). Channel lama dari
             // versi sebelumnya harus di-delete lalu di-recreate — sekali, dipicu flag.
             // Tanpa ini, APK baru tetap bunyi suara sistem di channel yang sudah ada.
             val prefs = context.getSharedPreferences("forfh_notif", Context.MODE_PRIVATE)
@@ -45,7 +47,20 @@ class ForfhNotifications(private val context: Context) {
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
                     description = "Alarm bangun kuliah"
-                    setSound(alarmSoundUri, null)
+                    // USAGE_ALARM → bunyi diputar di stream ALARM, bukan NOTIFICATION.
+                    // Tanpa ini dumpsys menunjukkan mAudioAttributes=null → sistem pakai
+                    // default USAGE_NOTIFICATION → volume ikut stream notif (~50%),
+                    // bukan stream alarm (87%) → bunyi "kecil banget".
+                    // setAudioAttributes() sudah tidak ada di compileSdk 37 (android.jar
+                    // platform 36/37 hanya punya getAudioAttributes) — jalan satu-satunya:
+                    // setSound(uri, attrs) yang menetapkan sound + attributes sekaligus.
+                    setSound(
+                        alarmSoundUri,
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build(),
+                    )
                     enableVibration(true)
                     // CATEGORY_ALARM dibawa notifikasi (builder), bukan channel — setCategory channel API tersembunyi
                 },
@@ -163,7 +178,7 @@ class ForfhNotifications(private val context: Context) {
     companion object {
         const val CHANNEL_CLASS = "alarm_kuliah"
         const val CHANNEL_TASK = "reminder_tugas"
-        // Bump tiap kali sound/vibration channel berubah — memicu delete+recreate sekali
-        private const val CHANNEL_SOUND_VERSION = 2
+        // Bump tiap kali sound/vibration/audio-attributes channel berubah — memicu delete+recreate sekali
+        private const val CHANNEL_SOUND_VERSION = 3
     }
 }
