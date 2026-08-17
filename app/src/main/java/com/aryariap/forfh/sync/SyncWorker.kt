@@ -12,6 +12,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.aryariap.forfh.ForfhApp
+import com.aryariap.forfh.debug.AppLog
 import java.util.concurrent.TimeUnit
 
 class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
@@ -23,7 +24,11 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
                 app.container.rescheduler.reconcile()
                 Result.success()
             }
-            else -> when (val out = app.container.syncRepository.sync()) {
+            else -> {
+                if (shouldSkipSync(app.container.sessionManager.isLoggedIn(), inputData.getString(MODE))) {
+                    AppLog.info("SyncWorker", "sync skip: belum login (periodic/one-shot diam)")
+                    Result.success()
+                } else when (val out = app.container.syncRepository.sync()) {
                 is SyncOutcome.Success -> {
                     app.container.rescheduler.rescheduleAll() // via AlarmRescheduler — tidak pernah langsung
                     Result.success()
@@ -34,6 +39,7 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
                     SyncFailure.OFFLINE -> Result.retry()
                     SyncFailure.SERVER -> Result.success()
                 }
+                }
             }
         }
     }
@@ -41,6 +47,17 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
     companion object {
         private const val MODE = "mode"
         private const val MODE_RECONCILE = "reconcile"
+
+        /**
+         * Pure guard: sync (periodic/one-shot) is skipped when the user is logged out.
+         * Reconcile is NOT guarded — it operates purely from local Room data.
+         *
+         * @param isLoggedIn true if a session cookie is present.
+         * @param mode null or "sync" for remote sync; MODE_RECONCILE for local reconcile.
+         * @return true if the worker should return early without calling syncRepository.
+         */
+        fun shouldSkipSync(isLoggedIn: Boolean, mode: String?): Boolean =
+            !isLoggedIn && mode != MODE_RECONCILE
 
         /** Nama unique work sync satu-kali — dipakai juga oleh AppContainer (sinyal syncRunning layar Info). */
         const val UNIQUE_SYNC_ONCE = "sync_once"
