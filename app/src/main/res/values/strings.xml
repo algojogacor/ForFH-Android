@@ -5,4 +5,5 @@
     <string name="channel_alarm_kuliah">Alarm Kuliah</string>
     <string name="channel_reminder_tugas">Reminder Tugas</string>
     <string name="widget_description">Widget jadwal: kelas berikutnya dan alarm berikutnya</string>
+    <string name="tasks_widget_description">Widget tugas: 3 tugas terdekat dan status sinkron</string>
 </resources>

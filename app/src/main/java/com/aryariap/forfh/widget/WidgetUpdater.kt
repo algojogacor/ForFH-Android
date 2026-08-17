@@ -6,7 +6,7 @@ import androidx.glance.appwidget.updateAll
 import com.aryariap.forfh.debug.AppLog
 
 /**
- * Refresh semua instance widget jadwal (Task 4). Dipanggil dari 4 titik update:
+ * Refresh semua instance widget jadwal dan tugas (Task 4 + Task 6). Dipanggil dari 4 titik update:
  * (1) AlarmRescheduler.execute() setelah selesai, (2) sync sukses (lewat rescheduleAll,
  * lihat SyncWorker), (3) boot app (ForfhApp.onCreate), (4) alarm ditutup/di-snooze
  * (FullScreenAlarmViewModel). Plus updatePeriodMillis 30 mnt di forfh_widget_info.xml.
@@ -21,6 +21,7 @@ import com.aryariap.forfh.debug.AppLog
 suspend fun refreshAll(context: Context) {
     try {
         ForfhWidget().updateAll(context)
+        TasksWidget().updateAll(context)
     } catch (t: Throwable) {
         Log.w(TAG, "Refresh widget gagal (non-fatal)", t)
         AppLog.error(TAG, "refresh widget gagal (non-fatal): ${t.message}")

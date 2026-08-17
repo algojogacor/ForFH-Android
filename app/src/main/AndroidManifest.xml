@@ -75,6 +75,19 @@
                 android:resource="@xml/forfh_widget_info" />
         </receiver>
 
+        <!-- Widget tugas (Glance): 3 tugas terdekat + status sync. -->
+        <receiver
+            android:name=".widget.TasksWidgetProvider"
+            android:exported="true"
+            android:permission="android.permission.BIND_APPWIDGET">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/forfh_tasks_widget_info" />
+        </receiver>
+
         <!-- Berbagi file log (ACTION_SEND): exported=false + grantUriPermissions WAJIB
              (FileProvider melempar SecurityException bila salah satu tidak ada).
              Hanya filesDir/logs yang bisa di-share (lihat res/xml/file_paths.xml). -->

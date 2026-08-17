@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget tugas ForFH: 3 tugas terdekat + status sync; ukuran compact 150x110 = 2x2 sel,
+     standard 260x110 = 4x2 sel (sama dimensions dengan ForfhWidget). updatePeriodMillis 30 mnt
+     safety net; update utama event-driven via WidgetUpdater.refreshAll. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="150dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="150dp"
+    android:minResizeHeight="110dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:description="@string/tasks_widget_description"
+    android:updatePeriodMillis="1800000" />
