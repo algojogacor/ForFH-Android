@@ -30,10 +30,10 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
                     Result.success()
                 } else when (val out = app.container.syncRepository.sync()) {
                 is SyncOutcome.Success -> {
-                    app.container.rescheduler.rescheduleAll() // via AlarmRescheduler — tidak pernah langsung
+                    app.container.rescheduler.rescheduleAll() // via AlarmRescheduler : tidak pernah langsung
                     Result.success()
                 }
-                // Kotlin 2.4: pattern `Failure(OFFLINE)`/`Failure(SERVER)` tak dianggap exhaustive —
+                // Kotlin 2.4: pattern `Failure(OFFLINE)`/`Failure(SERVER)` tak dianggap exhaustive :
                 // when pada enum reason dipakai supaya ekshaustif (semantik identik dengan brief).
                 is SyncOutcome.Failure -> when (out.reason) {
                     SyncFailure.OFFLINE -> Result.retry()
@@ -50,7 +50,7 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
 
         /**
          * Pure guard: sync (periodic/one-shot) is skipped when the user is logged out.
-         * Reconcile is NOT guarded — it operates purely from local Room data.
+         * Reconcile is NOT guarded : it operates purely from local Room data.
          *
          * @param isLoggedIn true if a session cookie is present.
          * @param mode null or "sync" for remote sync; MODE_RECONCILE for local reconcile.
@@ -59,7 +59,7 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
         fun shouldSkipSync(isLoggedIn: Boolean, mode: String?): Boolean =
             !isLoggedIn && mode != MODE_RECONCILE
 
-        /** Nama unique work sync satu-kali — dipakai juga oleh AppContainer (sinyal syncRunning layar Info). */
+        /** Nama unique work sync satu-kali : dipakai juga oleh AppContainer (sinyal syncRunning layar Info). */
         const val UNIQUE_SYNC_ONCE = "sync_once"
 
         /** Login sukses / tombol "Coba lagi" / pull-to-refresh. */
@@ -71,7 +71,7 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
             WorkManager.getInstance(context).enqueueUniqueWork(UNIQUE_SYNC_ONCE, ExistingWorkPolicy.REPLACE, request)
         }
 
-        /** Safety net: ±6 jam, network-constrained — bukan timing guarantee (§8.7, §9). */
+        /** Safety net: ±6 jam, network-constrained : bukan timing guarantee (§8.7, §9). */
         fun enqueuePeriodic(context: Context) {
             val request = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -81,7 +81,7 @@ class SyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorke
                 .enqueueUniquePeriodicWork("sync_periodic", ExistingPeriodicWorkPolicy.KEEP, request)
         }
 
-        /** BOOT_COMPLETED / MY_PACKAGE_REPLACED — reconcile dari Room, tanpa perlu network. */
+        /** BOOT_COMPLETED / MY_PACKAGE_REPLACED : reconcile dari Room, tanpa perlu network. */
         fun enqueueReconcile(context: Context) {
             val request = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setInputData(workDataOf(MODE to MODE_RECONCILE))
