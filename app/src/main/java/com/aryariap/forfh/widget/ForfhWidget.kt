@@ -2,6 +2,7 @@ package com.aryariap.forfh.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -101,7 +102,7 @@ fun ForfhWidgetContent(
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .padding(16)
+            .padding(16.dp)
             .clickable(actionStartActivity<MainActivity>()),
         verticalAlignment = Alignment.Top,
         horizontalAlignment = Alignment.Start,
@@ -126,7 +127,7 @@ fun ForfhWidgetContent(
             maxLines = 1,
         )
         if (nextAlarm != null) {
-            Spacer(GlanceModifier.height(4))
+            Spacer(GlanceModifier.height(4.dp))
             Text(
                 text = "Alarm: ${UiFormat.timeOf(nextAlarm.triggerAtMillis, WIB)}",
                 style = TextStyle(
