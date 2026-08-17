@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -57,6 +58,14 @@ private val DAY_ORDER = listOf(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PengaturanScreen(viewModel: PengaturanViewModel) {
+    var showLog by rememberSaveable { mutableStateOf(false) }
+    if (showLog) {
+        // Tombol panah dan tombol kembali sistem sama-sama menutup layar log.
+        BackHandler { showLog = false }
+        LogScreen(onBack = { showLog = false })
+        return
+    }
+
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
@@ -153,6 +162,18 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
             text = "Petunjuk MIUI/HyperOS: jika alarm tidak berbunyi, buka Setelan > Aplikasi > ForFH, " +
                 "aktifkan izin \"Alarm & pengingat\" dan \"Buka di layar kunci\", lalu nonaktifkan penghemat baterai.",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        HorizontalDivider()
+
+        Text("Bantuan", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        OutlinedButton(onClick = { showLog = true }, modifier = Modifier.fillMaxWidth()) {
+            Text("Log aplikasi")
+        }
+        Text(
+            text = "Catatan aktivitas alarm, sinkronisasi, dan notifikasi. Bisa dibagikan saat mencari masalah.",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 

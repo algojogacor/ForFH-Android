@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.aryariap.forfh.R
 import com.aryariap.forfh.data.db.ScheduleEntity
 import com.aryariap.forfh.data.db.ScheduledAlarmEntity
+import com.aryariap.forfh.debug.AppLog
 
 /**
  * Semua tampilan notifikasi. App tidak pernah bergantung pada FSI:
@@ -126,6 +127,7 @@ class ForfhNotifications(private val context: Context) {
         }
 
         NotificationManagerCompat.from(context).notify(StableHash.of(row.id), builder.build())
+        AppLog.info(TAG, "notif kuliah posted id=${row.id} channel=$CHANNEL_CLASS fsi=${canUseFullScreenIntent()} snooze=$snoozeAvailable")
     }
 
     /** Reminder tugas: tap → halaman Tugas (MainActivity extra open_tasks). */
@@ -148,6 +150,7 @@ class ForfhNotifications(private val context: Context) {
             .setContentIntent(pi)
             .build()
         NotificationManagerCompat.from(context).notify(StableHash.of("task|$slotHour|$date"), notif)
+        AppLog.info(TAG, "notif tugas posted slot=$slotHour date=$date channel=$CHANNEL_TASK")
     }
 
     /**
@@ -173,9 +176,11 @@ class ForfhNotifications(private val context: Context) {
             .setContentIntent(pi)
             .build()
         NotificationManagerCompat.from(context).notify(StableHash.of("taskdl|$taskId|$date"), notif)
+        AppLog.info(TAG, "notif deadline posted task=$taskId date=$date channel=$CHANNEL_TASK")
     }
 
     companion object {
+        private const val TAG = "ForfhNotifications"
         const val CHANNEL_CLASS = "alarm_kuliah"
         const val CHANNEL_TASK = "reminder_tugas"
         // Bump tiap kali sound/vibration/audio-attributes channel berubah — memicu delete+recreate sekali

@@ -74,5 +74,18 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/forfh_widget_info" />
         </receiver>
+
+        <!-- Berbagi file log (ACTION_SEND): exported=false + grantUriPermissions WAJIB
+             (FileProvider melempar SecurityException bila salah satu tidak ada).
+             Hanya filesDir/logs yang bisa di-share (lihat res/xml/file_paths.xml). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

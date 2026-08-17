@@ -37,6 +37,7 @@ import com.aryariap.forfh.ForfhApp
 import com.aryariap.forfh.MainActivity
 import com.aryariap.forfh.data.db.ScheduleEntity
 import com.aryariap.forfh.data.db.ScheduledAlarmEntity
+import com.aryariap.forfh.debug.AppLog
 import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.jadwal.nextUp
 import com.aryariap.forfh.ui.theme.DarkScheme
@@ -88,6 +89,7 @@ class ForfhWidget : GlanceAppWidget() {
             } catch (ce: CancellationException) {
                 throw ce
             } catch (t: Throwable) {
+                AppLog.error(TAG, "widget render gagal, fallback kosong: ${t.message}")
                 WidgetData(now = ZonedDateTime.now(WIB), nextClass = null, nextAlarm = null)
             }
         }
@@ -343,3 +345,5 @@ private fun widgetCourseColor(hex: String): ColorProvider =
         .getOrDefault(ColorProvider(ForfhColors.Accent))
 
 private val WIB: ZoneId = ZoneId.of("Asia/Jakarta")
+
+private const val TAG = "ForfhWidget"

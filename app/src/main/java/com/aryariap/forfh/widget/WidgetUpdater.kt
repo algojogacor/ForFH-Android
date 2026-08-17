@@ -3,6 +3,7 @@ package com.aryariap.forfh.widget
 import android.content.Context
 import android.util.Log
 import androidx.glance.appwidget.updateAll
+import com.aryariap.forfh.debug.AppLog
 
 /**
  * Refresh semua instance widget jadwal (Task 4). Dipanggil dari 4 titik update:
@@ -22,6 +23,7 @@ suspend fun refreshAll(context: Context) {
         ForfhWidget().updateAll(context)
     } catch (t: Throwable) {
         Log.w(TAG, "Refresh widget gagal (non-fatal)", t)
+        AppLog.error(TAG, "refresh widget gagal (non-fatal): ${t.message}")
     }
 }
 
