@@ -243,7 +243,7 @@ private fun HerRowView(row: HerRow) {
             }
             ExtraRows(row.extras)
         }
-        row.nilaiHuruf?.let {
+        row.grade?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.titleLarge,
@@ -371,7 +371,8 @@ private fun DosenWaliView(d: DosenFacts) {
 /**
  * Instruksi tugas — blok teks terbaca: kode kursus (mono primary) + nama, lalu per
  * section: nama section (redup) + teks instruksi apa adanya (web sudah membersihkan
- * HTML). Prosa dirender sebagai prosa, bukan baris label:nilai.
+ * HTML) + daftar aktivitas (nama tugas di section, "·" sebagai penanda baris — motif
+ * pemisah app). Prosa dirender sebagai prosa, bukan baris label:nilai.
  */
 @Composable
 private fun InstructionBlockView(model: InstructionBlockModel) {
@@ -408,6 +409,13 @@ private fun InstructionBlockView(model: InstructionBlockModel) {
                                 text = it,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        section.assignments.forEach { assignment ->
+                            Text(
+                                text = "· $assignment",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }

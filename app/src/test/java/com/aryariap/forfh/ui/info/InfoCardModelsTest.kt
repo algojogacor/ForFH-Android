@@ -172,6 +172,33 @@ class InfoCardModelsTest {
         assertEquals("3", row.sks)
         assertEquals("2026/1/12345", row.noUjian)
         assertEquals("2026/2027 Ganjil", row.periode)
+        // fokus nilai = huruf saat ada (huruf lebih informatif dari skor)
+        assertEquals("A", row.grade)
+    }
+
+    @Test
+    fun `hist_her - baris tanpa nilai huruf - skor numerik tetap tampil sebagai fokus`() {
+        val model = InfoCardModels.buildInfoCardModel(
+            "hist_her",
+            """
+            [{"NM_MATA_KULIAH":"Hak Asasi Manusia","NILAI":"87","SKS":"3"}]
+            """.trimIndent(),
+        ) as HerListModel
+        val row = model.rows.single()
+        assertNull(row.nilaiHuruf)
+        assertEquals("87", row.nilai)
+        assertEquals("87", row.grade)
+    }
+
+    @Test
+    fun `hist_her - tanpa nilai sama sekali - grade null, baris tetap punya nama`() {
+        val model = InfoCardModels.buildInfoCardModel(
+            "hist_her",
+            """[{"NM_MATA_KULIAH":"Hak Asasi Manusia"}]""",
+        ) as HerListModel
+        val row = model.rows.single()
+        assertNull(row.grade)
+        assertEquals("Hak Asasi Manusia", row.nama)
     }
 
     // ---------- pembayaran ----------
@@ -281,7 +308,7 @@ class InfoCardModelsTest {
     // ---------- instruksi_tugas ----------
 
     @Test
-    fun `instruksi_tugas - blok kursus dengan section dan teks instruksi`() {
+    fun `instruksi_tugas - blok kursus dengan section, teks instruksi, dan assignments`() {
         val model = InfoCardModels.buildInfoCardModel(
             "instruksi_tugas",
             """
@@ -298,10 +325,41 @@ class InfoCardModelsTest {
         val section = course.sections.single()
         assertEquals("Umum", section.nama)
         assertEquals("Perkuliahan dimulai 1 September 2026.\nRuang akan diumumkan kemudian.", section.teks)
+        assertEquals(listOf("UTS HAM"), section.assignments)
     }
 
     @Test
-    fun `instruksi_tugas - section tanpa teks dilewati, kursus tanpa section dilewati`() {
+    fun `instruksi_tugas - assignments nama aktivitas terbaca dari web (fix review)`() {
+        val model = InfoCardModels.buildInfoCardModel(
+            "instruksi_tugas",
+            """
+            [{"shortname":"FHK25601032","fullname":"Kursus HAM",
+              "sections":[{"sectionName":"Tugas","summary":"Instruksi lengkap",
+                "assignments":["Pengumpulan Tugas Resume Buku PIH Prof Peter Bab I","Assessment HAM"]}]}]
+            """.trimIndent(),
+        ) as InstructionBlockModel
+        assertEquals(
+            listOf("Pengumpulan Tugas Resume Buku PIH Prof Peter Bab I", "Assessment HAM"),
+            model.courses.single().sections.single().assignments,
+        )
+    }
+
+    @Test
+    fun `instruksi_tugas - section dengan assignments tapi tanpa teks tetap tampil`() {
+        val model = InfoCardModels.buildInfoCardModel(
+            "instruksi_tugas",
+            """
+            [{"shortname":"A","fullname":"Kursus A",
+              "sections":[{"sectionName":"Tugas","summary":"","assignments":["UTS","UAS"]}]}]
+            """.trimIndent(),
+        ) as InstructionBlockModel
+        val section = model.courses.single().sections.single()
+        assertNull(section.teks)
+        assertEquals(listOf("UTS", "UAS"), section.assignments)
+    }
+
+    @Test
+    fun `instruksi_tugas - section tanpa teks dan tanpa assignments dilewati`() {
         val model = InfoCardModels.buildInfoCardModel(
             "instruksi_tugas",
             """

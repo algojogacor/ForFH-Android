@@ -73,7 +73,13 @@ data class HerRow(
     val sks: String?,
     /** Sisa field baris — label map penuh. */
     val extras: List<Pair<String, String>>,
-)
+) {
+    /**
+     * Nilai yang ditampilkan sebagai fokus: huruf bila ada, skor numerik bila tidak
+     * (fix review: baris dengan NILAI saja tidak boleh kehilangan nilainya).
+     */
+    val grade: String? get() = nilaiHuruf ?: nilai
+}
 
 /** pembayaran — daftar tagihan: kegiatan/semester, nominal Rupiah sebagai fokus. */
 data class PaymentListModel(
@@ -145,6 +151,8 @@ data class CourseInstruction(
 data class SectionInstruction(
     val nama: String?,
     val teks: String?,
+    /** Nama aktivitas dalam section (data-activityname web) — konten, bukan kunci matching. */
+    val assignments: List<String> = emptyList(),
 )
 
 /** Fallback jenis tak dikenal (atau baris tak beraturan) — kartu generic label map penuh. */
@@ -363,18 +371,21 @@ object InfoCardModels {
     /**
      * Baris instruksi tugas HE-BAT berbentuk objek camelCase (HebatCourseInstructions web):
      * {courseId, shortname, fullname, sections:[{sectionName, summary, assignments}]}.
-     * Teks instruksi adalah section summary — dipertahankan apa adanya (web sudah
-     * membersihkan HTML). Section tanpa teks dilewati; assignments adalah kunci matching
-     * (bukan konten) sehingga tidak ditampilkan (keputusan desain, R-31).
+     * Teks instruksi = section summary; assignments = daftar nama aktivitas (data-activityname,
+     * mis. "Pengumpulan Tugas Resume Buku PIH Prof Peter Bab I") — konten yang dicari user,
+     * BUKAN kunci matching (fix review). Keduanya dipertahankan; section dengan salah satu
+     * konten tetap tampil; yang benar-benar kosong dilewati.
      */
     private fun instructions(rows: List<JsonObject>): InstructionBlockModel {
         val courses = rows.mapNotNull { obj ->
             val sections = (obj["sections"] as? JsonArray).orNull().mapNotNull { item ->
                 val section = item as? JsonObject ?: return@mapNotNull null
                 val teks = (section["summary"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
-                    ?: return@mapNotNull null
                 val nama = (section["sectionName"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
-                SectionInstruction(nama, teks)
+                val assignments = (section["assignments"] as? JsonArray).orNull()
+                    .mapNotNull { (it as? JsonPrimitive)?.content?.takeIf { a -> a.isNotBlank() } }
+                if (teks == null && assignments.isEmpty()) return@mapNotNull null
+                SectionInstruction(nama, teks, assignments)
             }
             if (sections.isEmpty()) return@mapNotNull null
             CourseInstruction(
