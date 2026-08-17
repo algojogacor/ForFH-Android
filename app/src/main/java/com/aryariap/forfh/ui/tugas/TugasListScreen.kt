@@ -1,6 +1,7 @@
 package com.aryariap.forfh.ui.tugas
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -109,7 +110,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                             )
                         }
                         Spacer(Modifier.width(12.dp))
-                        StatusChip(item)
+                        StatusChip(item, onRetry = { viewModel.markDone(item.id) })
                     }
                 }
             }
@@ -117,9 +118,21 @@ fun TugasListScreen(viewModel: TugasViewModel) {
     }
 }
 
+/**
+ * Chip status kartu tugas. Untuk tugas DONE, Task 10 menambah indikator sinkronisasi:
+ * PENDING = "Mengirim…" (PUT belum konfirmasi), FAILED = "Gagal · Ketuk untuk kirim ulang"
+ * (bisa diketuk — kirim ulang PUT; clickable di dalam Card(onClick) menang atas tap, tidak
+ * membuka detail), SYNCED = "Selesai" seperti biasa (server sudah konfirmasi — tanpa chip
+ * tambahan, sesuai "sukses: SYNCED tanpa sentuh UI lagi").
+ */
 @Composable
-private fun StatusChip(item: TugasItem) {
+private fun StatusChip(item: TugasItem, onRetry: () -> Unit) {
+    val syncState = com.aryariap.forfh.data.db.TaskEntity.SyncState
     val (label, bg, fg) = when {
+        item.status == "DONE" && item.syncState == syncState.PENDING ->
+            Triple("Mengirim…", ForfhColors.Warning, Color.White)
+        item.status == "DONE" && item.syncState == syncState.FAILED ->
+            Triple("Gagal · Ketuk untuk kirim ulang", ForfhColors.Danger, Color.White)
         item.status == "DONE" -> Triple("Selesai", ForfhColors.Success, Color.White)
         item.computedStatus == "OVERDUE" || item.status == "OVERDUE" ->
             Triple("Terlambat", ForfhColors.Danger, Color.White)
@@ -127,12 +140,17 @@ private fun StatusChip(item: TugasItem) {
         item.status == "REVISION" -> Triple("Revisi", ForfhColors.Warning, Color.White)
         else -> Triple("Belum", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
     }
+    val base = Modifier
+        .background(bg, RoundedCornerShape(6.dp))
+        .padding(horizontal = 8.dp, vertical = 4.dp)
     Text(
         text = label,
         style = MaterialTheme.typography.labelLarge,
         color = fg,
-        modifier = Modifier
-            .background(bg, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier = if (item.status == "DONE" && item.syncState == syncState.FAILED) {
+            Modifier.clickable(onClick = onRetry).then(base)
+        } else {
+            base
+        },
     )
 }

@@ -15,6 +15,7 @@ import com.aryariap.forfh.data.db.AppDatabase
 import com.aryariap.forfh.data.db.KampusInfoDao
 import com.aryariap.forfh.data.db.ScheduledAlarmsDao
 import com.aryariap.forfh.data.db.SchedulesDao
+import com.aryariap.forfh.data.db.TasksDao
 import com.aryariap.forfh.data.prefs.Preferences
 import com.aryariap.forfh.data.prefs.SecureCookieStore
 import com.aryariap.forfh.data.prefs.SessionEvent
@@ -25,9 +26,11 @@ import com.aryariap.forfh.network.PersistentCookieJar
 import com.aryariap.forfh.sync.AlarmRescheduler
 import com.aryariap.forfh.sync.RescheduleAll
 import com.aryariap.forfh.sync.SyncRepository
+import com.aryariap.forfh.sync.SyncStateStore
 import com.aryariap.forfh.sync.SyncWorker
 import com.aryariap.forfh.ui.info.InfoContainer
 import com.aryariap.forfh.ui.info.SyncActivity
+import com.aryariap.forfh.ui.tugas.TugasContainer
 import com.aryariap.forfh.widget.refreshAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +52,7 @@ interface NextUpContainer {
     val planner: AlarmPlanner
 }
 
-class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer {
+class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer, TugasContainer {
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val context: android.content.Context get() = app
@@ -59,6 +62,10 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer {
     override val schedulesDao: SchedulesDao by lazy { database.schedulesDao() }
     override val alarmsDao: ScheduledAlarmsDao by lazy { database.scheduledAlarmsDao() }
     override val kampusInfoDao: KampusInfoDao by lazy { database.kampusInfoDao() }
+    override val tasksDao: TasksDao by lazy { database.tasksDao() }
+
+    /** Pending mark selesai + lastSync — implementasi SyncStateStore (Preferences). */
+    override val syncState: SyncStateStore get() = prefs
 
     private val dataStore: DataStore<CorePreferences> by lazy {
         PreferenceDataStoreFactory.create(
@@ -75,7 +82,7 @@ class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer {
         PersistentCookieJar(secureCookieStore, applicationScope)
     }
 
-    val apiService: ForfhApiService by lazy {
+    override val apiService: ForfhApiService by lazy {
         ApiClient.retrofit(ApiClient.build(cookieJar, sessionManager))
     }
 

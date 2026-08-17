@@ -3,6 +3,7 @@ package com.aryariap.forfh.sync
 import android.util.Log
 import com.aryariap.forfh.data.db.KampusInfoDao
 import com.aryariap.forfh.data.db.SchedulesDao
+import com.aryariap.forfh.data.db.TaskEntity
 import com.aryariap.forfh.data.db.TasksDao
 import com.aryariap.forfh.network.ForfhApiService
 import com.aryariap.forfh.network.toEntity
@@ -61,9 +62,36 @@ class SyncRepository(
 
         schedulesDao.replaceAll(schedules)
         tasksDao.replaceAll(tasks)
+        reapplyPendingMarks(tasks) // Task 10: setelah replaceAll, sebelum setLastSync
         syncState.setLastSync(clock.millis(), "ok")
         syncKampusInfo() // R4: setelah sukses, terpisah — campus info TIDAK pernah menggagalkan sync
         return SyncOutcome.Success(schedules.size, tasks.size)
+    }
+
+    /**
+     * Task 10, ruling R25: mark selesai yang belum dikonfirmasi server (syncState PENDING)
+     * diterapkan ulang ke lokal SETELAH wipe-and-replace — PUT belum konfirmasi, status "DONE"
+     * jangan tertimpa "Belum" dari server. HANYA PENDING yang di-re-apply (applyPendingStatuses);
+     * yang SYNCED/FAILED ikut aturan server — FAILED tidak di-silent re-PUT, retry via ketuk UI.
+     *
+     * Kegagalan apa pun (baca store / tulis ulang) hanya di-log: re-apply adalah pelengkap,
+     * TIDAK boleh menggagalkan sync utama (pola syncKampusInfo).
+     */
+    private suspend fun reapplyPendingMarks(serverTasks: List<TaskEntity>) {
+        val pendingIds = try {
+            syncState.pendingMarkDone()
+        } catch (e: Exception) {
+            Log.w(TAG, "baca pending markDone gagal, dilewati: ${e.message}")
+            return
+        }
+        if (pendingIds.isEmpty()) return
+        val merged = applyPendingStatuses(serverTasks, pendingIds)
+        if (merged == serverTasks) return // tidak ada yang perlu di-re-apply
+        try {
+            tasksDao.replaceAll(merged)
+        } catch (e: Exception) {
+            Log.w(TAG, "re-apply pending markDone gagal, dilewati: ${e.message}")
+        }
     }
 
     /**

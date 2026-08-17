@@ -39,13 +39,21 @@ interface TasksDao {
     fun getDueTasksOnce(fromMillis: Long, toMillis: Long): List<TaskEntity>
 
     /**
-     * Dipanggil HANYA setelah PUT /api/tasks/{id} sukses (invariant: server sumber kebenaran).
+     * Mark selesai optimistik (Task 10): status DONE + computedStatus NULL + syncState PENDING
+     * SEKETIKA, sebelum PUT /api/tasks/{id} selesai — UI tidak menunggu network round-trip.
      * suspend → Room jalankan di query executor; NON-suspend di sini akan crash
      * "Cannot access database on the main thread" saat dipanggil dari viewModelScope (Main)
-     * — insiden 2026-08-16 (markDone) — padahal updateStatus dipanggil dari UI, bukan context Default.
+     * — insiden 2026-08-16 (markDone) — padahal update dipanggil dari UI, bukan context Default.
      */
-    @Query("UPDATE tasks SET status = :status, computedStatus = :computedStatus WHERE id = :id")
-    suspend fun updateStatus(id: String, status: String, computedStatus: String?)
+    @Query("UPDATE tasks SET status = 'DONE', computedStatus = NULL, syncState = 'PENDING' WHERE id = :id")
+    suspend fun updateMarked(id: String)
+
+    /**
+     * Hasil PUT markDone (Task 10): syncState = SYNCED (sukses) / FAILED (gagal).
+     * Status tugas tidak disentuh lagi — sudah DONE dari updateMarked.
+     */
+    @Query("UPDATE tasks SET syncState = :state WHERE id = :id")
+    suspend fun updateSyncState(id: String, state: String)
 
     @Query("DELETE FROM tasks")
     fun clearAll()

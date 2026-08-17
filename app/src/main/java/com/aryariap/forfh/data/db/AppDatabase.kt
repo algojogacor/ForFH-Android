@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         KampusInfoEntity::class,
         KampusMetaEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,6 +35,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * V2 → V3 (Task 10, ruling R24): kolom syncState di tabel tasks untuk mark selesai
+         * optimistik. NOT NULL DEFAULT 'SYNCED' — baris lama dianggap tersinkron (tidak ada
+         * yang pending sebelum fitur ini ada).
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(SQL_ADD_TASK_SYNC_STATE)
+            }
+        }
+
         // SQL CREATE TABLE tabel info kampus (schema V2). internal + const (bukan private):
         // dipakai bersama Migration12Test — contract test JVM yang menjaga SQL ini tetap sinkron
         // dengan entity (schema drift → test merah). Runtime Room menvalidasi migrasi sesungguhnya
@@ -49,9 +60,14 @@ abstract class AppDatabase : RoomDatabase() {
             "CREATE TABLE IF NOT EXISTS `kampus_meta` (`id` INTEGER NOT NULL, `connected` INTEGER NOT NULL, " +
                 "`lastSyncAt` TEXT, PRIMARY KEY(`id`))"
 
+        // SQL migrasi V2→V3. internal + const: dipakai bersama Migration23Test (contract test
+        // JVM, pola MIGRATION_1_2) — SQL ini harus persis dengan schema entity TaskEntity.
+        internal const val SQL_ADD_TASK_SYNC_STATE =
+            "ALTER TABLE `tasks` ADD COLUMN `syncState` TEXT NOT NULL DEFAULT 'SYNCED'"
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "forfh.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigration(true)
                 .build()
     }
