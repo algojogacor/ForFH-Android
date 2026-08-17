@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.aryariap.forfh.ui.ForfhAppRoot
+import com.aryariap.forfh.ui.StartTab
 import com.aryariap.forfh.ui.theme.ForfhTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,13 +20,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge() // edge-to-edge wajib (targetSdk 36)
         val app = application as ForfhApp
         requestNotificationsPermissionIfNeeded()
-        val openTasks = intent.getBooleanExtra("open_tasks", false) // notif tugas (T7)
-        // consume flag: recreation berikutnya (rotate, process-death lalu kembali) membawa intent
-        // tanpa extra → LaunchedEffect(openTasks) di ForfhAppRoot no-op → tab restore pilihan user.
+        val openTab = StartTab.fromIntent(
+            openTasks = intent.getBooleanExtra("open_tasks", false),
+            openTab = intent.getIntExtra("open_tab", -1),
+        )
+        // consume extras: recreation berikutnya (rotate, process-death lalu kembali) membawa intent
+        // tanpa extra → LaunchedEffect(startTab) di ForfhAppRoot no-op → tab restore pilihan user.
         intent.removeExtra("open_tasks")
+        intent.removeExtra("open_tab")
         setContent {
             ForfhTheme {
-                ForfhAppRoot(container = app.container, openTasks = openTasks)
+                ForfhAppRoot(container = app.container, startTab = openTab)
             }
         }
     }
@@ -53,7 +58,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent) // tap notif kedua saat app sudah hidup (launchMode CLEAR_TOP) → extra open_tasks fresh
+        setIntent(intent) // tap notif kedua saat app sudah hidup (launchMode CLEAR_TOP) → extra open_tab/open_tasks fresh
         recreate()
     }
 

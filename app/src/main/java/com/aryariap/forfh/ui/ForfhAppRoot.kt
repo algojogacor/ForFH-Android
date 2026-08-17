@@ -58,7 +58,7 @@ fun <T : ViewModel> simpleFactory(create: () -> T): ViewModelProvider.Factory =
     }
 
 @Composable
-fun ForfhAppRoot(container: AppContainer, openTasks: Boolean) {
+fun ForfhAppRoot(container: AppContainer, startTab: Int?) {
     val navController = rememberNavController()
 
     // Jalur awal: cek cookie sesi (terenkripsi di Keystore) — splash sesaat lalu login/main
@@ -100,21 +100,21 @@ fun ForfhAppRoot(container: AppContainer, openTasks: Boolean) {
             LoginScreen(vm)
         }
         composable(Routes.MAIN) {
-            MainScaffold(container = container, openTasks = openTasks)
+            MainScaffold(container = container, startTab = startTab)
         }
     }
 }
 
 @Composable
-private fun MainScaffold(container: AppContainer, openTasks: Boolean) {
-    var tab by rememberSaveable { mutableIntStateOf(if (openTasks) 1 else 0) }
+private fun MainScaffold(container: AppContainer, startTab: Int?) {
+    var tab by rememberSaveable { mutableIntStateOf(startTab ?: 0) }
 
-    // REQ-19: openTasks harus menang atas rememberSaveable saat saved-state restore
+    // REQ-19: startTab harus menang atas rememberSaveable saat saved-state restore
     // (proses dibunuh di background → onCreate dengan savedInstanceState → tab restore,
-    // misal Jadwal=0, menutupi openTasks=1). Sekali per launch: openTasks konstan,
-    // tidak menimpa pilihan tab user berikutnya.
-    LaunchedEffect(openTasks) {
-        if (openTasks) tab = 1
+    // misal Jadwal=0, menutupi startTab=1). Sekali per launch: startTab konstan,
+    // tidak menimpa pilihan tab user berikutnya. Nilai di luar 0..3 diabaikan (di-clamp).
+    LaunchedEffect(startTab) {
+        startTab?.let { if (it in 0..3) tab = it }
     }
 
     val context = LocalContext.current

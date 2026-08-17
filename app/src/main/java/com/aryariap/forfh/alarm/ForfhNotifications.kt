@@ -154,14 +154,14 @@ class ForfhNotifications(private val context: Context) {
     }
 
     /**
-     * Deadline tugas H-1: notif biasa (bukan full-screen), tap → halaman Tugas.
+     * Deadline tugas H-1: notif biasa (bukan full-screen), tap → halaman Tugas (open_tab=1).
      * R2: pakai channel tugas existing CHANNEL_TASK — tanpa channel baru.
      */
     fun showTaskDeadline(text: String, taskId: String, date: String) {
         ensureChannels()
         val intent = Intent(context, com.aryariap.forfh.MainActivity::class.java)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            .putExtra("open_tasks", true)
+            .putExtra("open_tab", 1)
         val pi = PendingIntent.getActivity(
             context, StableHash.of("taskdl|$taskId|$date"), intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

@@ -11,7 +11,9 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
+import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionStartActivity
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
@@ -162,7 +164,7 @@ private fun CompactContent(
             // clickable SEBELUM padding: seluruh footprint widget (termasuk tepi) dapat di-tap,
             // bukan hanya area dalam padding: kontras teks baru sah karena ada permukaan nyata
             // (widgetBackground = background skema app, light #FAF9F7 / dark gelap, R-25).
-            .clickable(actionStartActivity<MainActivity>())
+            .clickable(actionStartActivity<MainActivity>(parameters = actionParametersOf(ActionParameters.Key<Int>("open_tab").to(0))))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.Start,
@@ -223,7 +225,7 @@ private fun StandardContent(
             // clickable SEBELUM padding: seluruh footprint widget (termasuk tepi) dapat di-tap,
             // bukan hanya area dalam padding: kontras teks baru sah karena ada permukaan nyata
             // (widgetBackground = background skema app, light #FAF9F7 / dark gelap, R-25).
-            .clickable(actionStartActivity<MainActivity>())
+            .clickable(actionStartActivity<MainActivity>(parameters = actionParametersOf(ActionParameters.Key<Int>("open_tab").to(0))))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
