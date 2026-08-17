@@ -1,8 +1,8 @@
-package com.aryariap.forfh.alarm
+﻿package com.aryariap.forfh.alarm
 
 import com.aryariap.forfh.data.db.ScheduledAlarmEntity
 
-/** Hasil keputusan notifikasi DAY_PREVIEW H-1 — murni, tanpa Android (pola DeadlineDecision). */
+/** Hasil keputusan notifikasi DAY_PREVIEW H-1 : murni, tanpa Android (pola DeadlineDecision). */
 sealed interface DayPreviewAction {
     /** Row valid, logged-in → Fire (tampilkan notif). */
     data object Fire : DayPreviewAction
@@ -15,7 +15,7 @@ sealed interface DayPreviewAction {
 }
 
 /**
- * Guard DAY_PREVIEW — murni dan bisa di-unit-test (DayPreviewDecisionTest, plain JUnit4).
+ * Guard DAY_PREVIEW : murni dan bisa di-unit-test (DayPreviewDecisionTest, plain JUnit4).
  * Row ada + trigger cocok + logged-in → Fire; logout → CancelSilently;
  * row tak ada / extras basi → Ignore.
  */

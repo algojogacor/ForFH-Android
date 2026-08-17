@@ -1,4 +1,4 @@
-package com.aryariap.forfh.alarm
+﻿package com.aryariap.forfh.alarm
 
 import com.aryariap.forfh.data.db.ScheduledAlarmEntity
 import org.junit.Assert.assertEquals
@@ -8,7 +8,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
- * Guard murni DAY_PREVIEW — murni, plain JUnit4 (pola DeadlineDecisionTest).
+ * Guard murni DAY_PREVIEW : murni, plain JUnit4 (pola DeadlineDecisionTest).
  * SEMUA cabang: row null (Ignore), trigger mismatch (Ignore),
  * logout (CancelSilently), valid (Fire).
  */
