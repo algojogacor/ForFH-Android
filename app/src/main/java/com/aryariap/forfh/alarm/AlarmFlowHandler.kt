@@ -8,6 +8,8 @@ import com.aryariap.forfh.data.prefs.SessionManager
 import com.aryariap.forfh.debug.AppLog
 import com.aryariap.forfh.sync.AlarmRescheduler
 import com.aryariap.forfh.sync.TaskDeadlinePlanner
+import com.aryariap.forfh.sync.TomorrowPlanner
+import com.aryariap.forfh.sync.TomorrowSummaryText
 import kotlinx.coroutines.CoroutineScope
 import java.time.LocalDate
 import java.time.ZoneId
@@ -164,6 +166,52 @@ class AlarmFlowHandler(
                 rescheduler.cancelAlarm(identity)
             }
             DeadlineAction.Ignore -> AppLog.warn(TAG, "deadline ignore task=${extras.taskId} (row tak ada/trigger basi)")
+        }
+    }
+
+    /**
+     * DAY_PREVIEW: one-shot ringkasan besok jam 20:00 WIB.
+     * Guard berlapis: row ada + trigger cocok + logged-in → Fire (notif + hapus row);
+     * logout → CancelSilently (hapus row tanpa tampil); row tak ada / trigger basi → Ignore.
+     */
+    suspend fun handleDayPreview(intent: Intent) {
+        val date = intent.getStringExtra("occurrenceDate")
+        val trigger = intent.getStringExtra("triggerAtMillis")?.toLongOrNull()
+        if (date == null || trigger == null) {
+            AppLog.warn(TAG, "day preview extras tak valid date=$date trigger=$trigger")
+            return
+        }
+        val identity = TomorrowPlanner.dayPreviewIdentity(LocalDate.parse(date))
+        val row = alarmsDao.getByIdOnce(identity)
+        when (DayPreviewDecision.decide(
+            extras = DayPreviewExtras(date, trigger),
+            row = row,
+            isLoggedIn = sessionManager.isLoggedIn(),
+        )) {
+            DayPreviewAction.Fire -> {
+                val tomorrow = LocalDate.parse(date)
+                val zone0 = zone
+                val from = tomorrow.atStartOfDay(zone0).toInstant().toEpochMilli()
+                val to = tomorrow.plusDays(1).atStartOfDay(zone0).toInstant().toEpochMilli()
+                val text = TomorrowSummaryText.build(
+                    schedulesDao.getAllOnce(), tasksDao.getDueTasksOnce(from, to), tomorrow, zone0,
+                )
+                if (text != null && notifications.hasPermission()) {
+                    notifications.showDayPreview(text, date)
+                    AppLog.info(TAG, "day preview show date=$date")
+                } else {
+                    AppLog.warn(TAG, "day preview skip-silent date=$date text=${text != null}")
+                }
+                // one-shot: fire/tidak → row dihapus; reconcile membangun ulang utk malam berikutnya
+                rescheduler.cancelAlarm(identity)
+            }
+            DayPreviewAction.CancelSilently -> {
+                AppLog.warn(TAG, "day preview cancel-silent id=$identity (logout)")
+                rescheduler.cancelAlarm(identity)
+            }
+            DayPreviewAction.Ignore -> {
+                AppLog.warn(TAG, "day preview ignore id=$identity row=${row != null}")
+            }
         }
     }
 

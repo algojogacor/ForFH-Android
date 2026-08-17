@@ -30,6 +30,7 @@ class AlarmScheduler(
         "CLASS_ALARM" -> AlarmReceiver.ACTION_CLASS_ALARM
         "TASK_REMINDER" -> AlarmReceiver.ACTION_TASK_REMINDER
         "TASK_DEADLINE" -> AlarmReceiver.ACTION_TASK_DEADLINE
+        "DAY_PREVIEW" -> AlarmReceiver.ACTION_DAY_PREVIEW
         else -> null // kind tak dikenal → receiver no-op (else -> Unit)
     }
 

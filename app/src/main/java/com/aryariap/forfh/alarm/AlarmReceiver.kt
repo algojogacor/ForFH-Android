@@ -24,6 +24,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     ACTION_CLASS_ALARM -> handler.handleClassAlarm(intent)
                     ACTION_TASK_REMINDER -> handler.handleTaskReminder(intent)
                     ACTION_TASK_DEADLINE -> handler.handleTaskDeadline(intent)
+                    ACTION_DAY_PREVIEW -> handler.handleDayPreview(intent)
                     ACTION_SNOOZE -> handler.snooze(intent.getStringExtra("identity") ?: "")
                     else -> Unit
                 }
@@ -41,6 +42,7 @@ class AlarmReceiver : BroadcastReceiver() {
         const val ACTION_CLASS_ALARM = "com.aryariap.forfh.action.CLASS_ALARM"
         const val ACTION_TASK_REMINDER = "com.aryariap.forfh.action.TASK_REMINDER"
         const val ACTION_TASK_DEADLINE = "com.aryariap.forfh.action.TASK_DEADLINE"
+        const val ACTION_DAY_PREVIEW = "com.aryariap.forfh.action.DAY_PREVIEW"
         const val ACTION_SNOOZE = "com.aryariap.forfh.action.SNOOZE"
     }
 }

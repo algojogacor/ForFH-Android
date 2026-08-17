@@ -179,6 +179,32 @@ class ForfhNotifications(private val context: Context) {
         AppLog.info(TAG, "notif deadline posted task=$taskId date=$date channel=$CHANNEL_TASK")
     }
 
+    /**
+     * DAY_PREVIEW: ringkasan besok jam 20:00 WIB, tap → tab Jadwal (open_tab=0).
+     * Satu-shot: row dihapus setelah fire.
+     */
+    fun showDayPreview(text: String, date: String) {
+        ensureChannels()
+        val intent = Intent(context, com.aryariap.forfh.MainActivity::class.java)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            .putExtra("open_tab", 0)
+        val pi = PendingIntent.getActivity(
+            context, StableHash.of("tmrw|$date"), intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notif = NotificationCompat.Builder(context, CHANNEL_TASK)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
+            .setContentTitle("Besok")
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .build()
+        NotificationManagerCompat.from(context).notify(StableHash.of("tmrw|$date"), notif)
+        AppLog.info(TAG, "notif day preview posted date=$date channel=$CHANNEL_TASK")
+    }
+
     companion object {
         private const val TAG = "ForfhNotifications"
         const val CHANNEL_CLASS = "alarm_kuliah"
