@@ -353,6 +353,87 @@ class ReconcilePlannerTest {
     }
 
     @Test
+    fun `besok ada kelas enabled - row DAY_PREVIEW masuk desired`() {
+        // Monday Aug 17 10:00 WIB; besok (Selasa Aug 18) ada kelas
+        // Aug 16 is Sunday (dayOfWeek=0), Aug 17 Monday (1), Aug 18 Tuesday (2)
+        val now = wib("2026-08-17T10:00")
+        val ops = planner.computeOps(
+            emptyList(),
+            listOf(sched(id = "s1", day = 2, start = "08:00")), // Tuesday class
+            emptyMap(),
+            now,
+            fullRebuild = true,
+            tasks = emptyList(),
+        )
+        val previewRows = ops.filterIsInstance<AlarmOp.Schedule>().filter { it.row.kind == "DAY_PREVIEW" }.map { it.row }
+        assertEquals(1, previewRows.size)
+        val row = previewRows.single()
+        assertEquals("tmrw|2026-08-18", row.id)
+        assertEquals("DAY_PREVIEW", row.kind)
+        assertEquals(null, row.scheduleId)
+        assertEquals(0, row.offsetMinutes)
+        assertEquals("2026-08-18", row.occurrenceDate) // tanggal BESOK (direview)
+        assertEquals(wibEpoch(2026, 8, 17, 20, 0), row.triggerAtMillis) // hari INI jam 20:00
+        assertEquals(0, row.snoozeCount)
+    }
+
+    @Test
+    fun `R19 - sekarang lewat jam 2000 WIB - row DAY_PREVIEW tidak masuk desired`() {
+        // Monday Aug 17 21:00 WIB; trigger 20:00 sudah lewat
+        val now = wib("2026-08-17T21:00")
+        val ops = planner.computeOps(
+            emptyList(),
+            listOf(sched(id = "s1", day = 2, start = "08:00")), // Tuesday class still exists
+            emptyMap(),
+            now,
+            fullRebuild = true,
+            tasks = emptyList(),
+        )
+        // R19: trigger masa lalu tidak masuk desired
+        assertTrue(ops.filterIsInstance<AlarmOp.Schedule>().none { it.row.kind == "DAY_PREVIEW" })
+    }
+
+    @Test
+    fun `fullRebuild - DAY_PREVIEW row basi tanggal kemarin di-cancel`() {
+        // Monday Aug 17 10:00 WIB; yesterday's DAY_PREVIEW (for Sunday Aug 16) is stale
+        val now = wib("2026-08-17T10:00")
+        val stale = ScheduledAlarmEntity(
+            id = "tmrw|2026-08-17", kind = "DAY_PREVIEW", scheduleId = null,
+            offsetMinutes = 0, occurrenceDate = "2026-08-17",
+            triggerAtMillis = wibEpoch(2026, 8, 16, 20, 0), snoozeCount = 0,
+        )
+        val ops = planner.computeOps(
+            listOf(stale),
+            listOf(sched(id = "s1", day = 2, start = "08:00")), // Tuesday class -> DAY_PREVIEW for Aug 18
+            emptyMap(),
+            now,
+            fullRebuild = true,
+            tasks = emptyList(),
+        )
+        // stale row (Aug 17) not in desired (Aug 18) -> cancel
+        assertTrue(ops.any { it is AlarmOp.Cancel && it.row.id == stale.id })
+        // new DAY_PREVIEW for Aug 18 is scheduled
+        val previewRows = ops.filterIsInstance<AlarmOp.Schedule>().filter { it.row.kind == "DAY_PREVIEW" }.map { it.row }
+        assertEquals(1, previewRows.size)
+        assertEquals("tmrw|2026-08-18", previewRows.single().id)
+    }
+
+    @Test
+    fun `besok tidak ada kelas enabled - row DAY_PREVIEW tidak masuk desired`() {
+        // Monday Aug 17 10:00 WIB; besok (Tuesday) tanpa kelas enabled
+        val now = wib("2026-08-17T10:00")
+        val ops = planner.computeOps(
+            emptyList(),
+            listOf(sched(id = "s1", day = 1, start = "08:00")), // Monday only, no Tuesday class
+            emptyMap(),
+            now,
+            fullRebuild = true,
+            tasks = emptyList(),
+        )
+        assertTrue(ops.filterIsInstance<AlarmOp.Schedule>().none { it.row.kind == "DAY_PREVIEW" })
+    }
+
+    @Test
     fun `HARDENING - exact restore - rescheduleAll kembali exact preserve sesi snooze`() {
         val now = wib("2026-08-17T00:00")
         val s = sched()

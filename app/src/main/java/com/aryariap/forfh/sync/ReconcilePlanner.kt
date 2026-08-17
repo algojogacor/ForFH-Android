@@ -26,6 +26,7 @@ sealed interface AlarmOp {
  */
 class ReconcilePlanner(private val planner: AlarmPlanner) {
     private val deadlinePlanner = TaskDeadlinePlanner()
+    private val tomorrowPlanner = TomorrowPlanner()
 
     fun computeOps(
         current: List<ScheduledAlarmEntity>,
@@ -122,6 +123,9 @@ class ReconcilePlanner(private val planner: AlarmPlanner) {
                 result[row.id] = row
             }
         }
+        // Notifikasi "Besok" 20:00 WIB (TomorrowPlanner): skipDates/mute TIDAK menyentuh
+        // DAY_PREVIEW — pola yang sama dengan TASK_DEADLINE di atas.
+        tomorrowPlanner.computeDayPreview(schedules, now)?.let { result[it.id] = it }
         return result
     }
 }
