@@ -14,3 +14,5 @@ keystore.properties
 .claude/skills/
 .agents/
 skills-lock.json
+*.zip
+/*.png

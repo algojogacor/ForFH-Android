@@ -52,7 +52,16 @@ interface NextUpContainer {
     val planner: AlarmPlanner
 }
 
-class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer, TugasContainer {
+interface JadwalContainer {
+    val schedulesDao: SchedulesDao
+    val tasksDao: TasksDao
+    val kampusInfoDao: KampusInfoDao
+    val prefs: Preferences
+    val syncActivity: Flow<SyncActivity>
+    val enqueueSync: () -> Unit
+}
+
+class AppContainer(private val app: ForfhApp) : NextUpContainer, InfoContainer, TugasContainer, JadwalContainer {
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val context: android.content.Context get() = app

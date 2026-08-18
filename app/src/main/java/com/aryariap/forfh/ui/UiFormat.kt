@@ -63,4 +63,38 @@ object UiFormat {
         "error" -> "gagal — coba lagi"
         else -> "belum pernah"
     }
+
+    private val monthYearFmt = DateTimeFormatter.ofPattern("MMMM yyyy", Locale("id", "ID"))
+    private val fullDateFmt = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale("id", "ID"))
+    private val shortDateFmt = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
+
+    fun monthYear(yearMonth: java.time.YearMonth): String = yearMonth.format(monthYearFmt)
+    fun fullDateIndonesian(localDate: java.time.LocalDate): String = localDate.format(fullDateFmt)
+    fun shortDateIndonesian(localDate: java.time.LocalDate): String = localDate.format(shortDateFmt)
+
+    fun parseDateRobust(dateStr: String?): java.time.LocalDate? {
+        if (dateStr.isNullOrBlank()) return null
+        val clean = dateStr.trim()
+        return runCatching {
+            if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
+                java.time.LocalDate.parse(clean.take(10))
+            } else if (clean.contains("/")) {
+                val parts = clean.split("/")
+                if (parts.size == 3) {
+                    if (parts[2].length == 4) { // dd/MM/yyyy
+                        java.time.LocalDate.of(parts[2].toInt(), parts[1].toInt(), parts[0].toInt())
+                    } else { // yyyy/MM/dd
+                        java.time.LocalDate.of(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
+                    }
+                } else null
+            } else if (clean.contains("-")) {
+                val parts = clean.split("-")
+                if (parts.size == 3 && parts[2].length == 4) { // dd-MM-yyyy
+                    java.time.LocalDate.of(parts[2].toInt(), parts[1].toInt(), parts[0].toInt())
+                } else null
+            } else {
+                java.time.LocalDate.parse(clean)
+            }
+        }.getOrNull()
+    }
 }

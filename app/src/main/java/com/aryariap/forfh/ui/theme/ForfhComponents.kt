@@ -342,7 +342,7 @@ fun ForfhNavDock(
     modifier: Modifier = Modifier,
 ) {
     val destinations = listOf(
-        NavDestination("Jadwal", Icons.Filled.DateRange),
+        NavDestination("Kalender", Icons.Filled.DateRange),
         NavDestination("Tugas", Icons.AutoMirrored.Filled.List),
         NavDestination("Info", Icons.Filled.Info),
         NavDestination("Atur", Icons.Filled.Settings),
@@ -480,7 +480,7 @@ fun PriorityPill(
                 modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
-                    .background(color)
+                    .background(color),
             )
             Text(
                 text = label,
@@ -490,4 +490,12 @@ fun PriorityPill(
             )
         }
     }
+}
+
+@Composable
+fun ForfhPriorityPill(
+    priority: String,
+    modifier: Modifier = Modifier,
+) {
+    PriorityPill(priority = priority, modifier = modifier)
 }

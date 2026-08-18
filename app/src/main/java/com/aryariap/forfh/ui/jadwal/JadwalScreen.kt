@@ -1,6 +1,7 @@
 package com.aryariap.forfh.ui.jadwal
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +24,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
@@ -51,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.info.SyncActivity
 import com.aryariap.forfh.ui.theme.ForfhColors
+import com.aryariap.forfh.ui.theme.ForfhPriorityPill
 import com.aryariap.forfh.ui.theme.ForfhSurface
 import com.aryariap.forfh.ui.theme.ForfhTopBar
 import com.aryariap.forfh.ui.theme.ForfhTypeExtras
@@ -95,7 +100,7 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                     .background(ForfhColors.PitchBlack)
             ) {
                 ForfhTopBar(
-                    title = "Jadwal",
+                    title = "Kalender",
                     eyebrow = todayFormatted,
                     trailing = {
                         IconButton(onClick = viewModel::syncNow) {
@@ -108,23 +113,25 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                     },
                 )
 
-                // Linear Segmented Tab Switcher (Hari ini / Seminggu)
+                // Linear Segmented Tab Switcher (Hari Ini / Seminggu / Bulan)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 4.dp)
+                        .padding(horizontal = 18.dp, vertical = 2.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(ForfhColors.SurfaceSecondary)
                         .padding(3.dp),
                 ) {
-                    listOf("Hari ini", "Seminggu").forEachIndexed { index, label ->
+                    listOf("Hari ini", "Seminggu", "Bulan").forEachIndexed { index, label ->
                         val selected = tab == index
                         val bg by animateColorAsState(
                             if (selected) ForfhColors.SurfaceHover else Color.Transparent,
+                            animationSpec = tween(150),
                             label = "tabBg",
                         )
                         val textColor by animateColorAsState(
                             if (selected) ForfhColors.TextPrimary else ForfhColors.TextMuted,
+                            animationSpec = tween(150),
                             label = "tabText",
                         )
                         Box(
@@ -145,6 +152,36 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                         }
                     }
                 }
+
+                // Linear Filter Bar (Kuliah, Tugas, Akademik)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CalendarFilterChip(
+                        label = "Kuliah",
+                        color = ForfhColors.LinearIndigo,
+                        selected = state.activeFilters.contains(CalendarFilter.KULIAH),
+                        onClick = { viewModel.toggleFilter(CalendarFilter.KULIAH) }
+                    )
+
+                    CalendarFilterChip(
+                        label = "Tugas",
+                        color = ForfhColors.PriorityP2,
+                        selected = state.activeFilters.contains(CalendarFilter.TUGAS),
+                        onClick = { viewModel.toggleFilter(CalendarFilter.TUGAS) }
+                    )
+
+                    CalendarFilterChip(
+                        label = "Akademik",
+                        color = ForfhColors.TextMuted,
+                        selected = state.activeFilters.contains(CalendarFilter.AKADEMIK),
+                        onClick = { viewModel.toggleFilter(CalendarFilter.AKADEMIK) }
+                    )
+                }
             }
         },
     ) { padding ->
@@ -158,67 +195,160 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (tab == 0) {
-                    if (nextUp.nextClass != null || nextUp.nextAlarm != null) {
-                        item {
-                            NextUpHeroCard(
-                                state = nextUp,
-                                nowMs = nowMs,
-                                onMute = nextUpViewModel::muteToday,
-                                onUnmute = nextUpViewModel::unmuteToday,
-                            )
+                when (tab) {
+                    // TAB 0: HARI INI
+                    0 -> {
+                        // 1. NextUp Hero Card (Kuliah Berikutnya)
+                        if (state.activeFilters.contains(CalendarFilter.KULIAH) &&
+                            (nextUp.nextClass != null || nextUp.nextAlarm != null)
+                        ) {
+                            item {
+                                NextUpHeroCard(
+                                    state = nextUp,
+                                    nowMs = nowMs,
+                                    onMute = nextUpViewModel::muteToday,
+                                    onUnmute = nextUpViewModel::unmuteToday,
+                                )
+                            }
                         }
-                    }
 
-                    if (state.today.isEmpty()) {
-                        item {
-                            ForfhSurface {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
+                        val showClasses = state.activeFilters.contains(CalendarFilter.KULIAH) && state.todayClasses.isNotEmpty()
+                        val showTasks = state.activeFilters.contains(CalendarFilter.TUGAS) && state.todayTasks.isNotEmpty()
+                        val showAcademic = state.activeFilters.contains(CalendarFilter.AKADEMIK) && state.todayAcademic.isNotEmpty()
+
+                        if (!showClasses && !showTasks && !showAcademic) {
+                            item {
+                                ForfhSurface {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        Text(
+                                            text = "Tidak Ada Jadwal atau Deadline Hari Ini",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = ForfhColors.TextPrimary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = "Nikmati waktu istirahat atau pelajari materi berikutnya.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = ForfhColors.TextMuted,
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // 2. Notion Real-Time Timeline Indicator
+                            if (showClasses || showTasks) {
+                                item {
+                                    NotionCurrentTimeLine(nowMs = nowMs)
+                                }
+                            }
+
+                            // 3. Class items for today (UTAMAKAN JADWAL KULIAH)
+                            if (showClasses) {
+                                items(state.todayClasses) { item ->
+                                    NotionEventCard(item)
+                                }
+                            }
+
+                            // 4. Tasks due today (UTAMAKAN TUGAS)
+                            if (showTasks) {
+                                item {
                                     Text(
-                                        text = "Tidak Ada Kuliah Hari Ini",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = ForfhColors.TextPrimary,
+                                        text = "DEADLINE TUGAS HARI INI",
+                                        style = ForfhTypeExtras.MonoMeta.copy(fontSize = 11.sp),
+                                        color = ForfhColors.PriorityP2,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
                                     )
+                                }
+                                items(state.todayTasks) { task ->
+                                    TaskDayCard(task)
+                                }
+                            }
+
+                            // 5. Academic Events (TARUH PALING BAWAH)
+                            if (showAcademic) {
+                                item {
                                     Text(
-                                        text = "Nikmati waktu istirahat atau pelajari materi berikutnya.",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        text = "KALENDER AKADEMIK HARI INI",
+                                        style = ForfhTypeExtras.MonoMeta.copy(fontSize = 11.sp),
                                         color = ForfhColors.TextMuted,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
                                     )
+                                }
+                                items(state.todayAcademic) { item ->
+                                    AcademicAllDayBanner(item)
                                 }
                             }
                         }
-                    } else {
-                        // Notion Real-Time Timeline Indicator
-                        item {
-                            NotionCurrentTimeLine(nowMs = nowMs)
-                        }
-                        items(state.today) { item ->
-                            NotionEventCard(item)
+                    }
+
+                    // TAB 1: SEMINGGU
+                    1 -> {
+                        items(state.week) { hari ->
+                            val hasClasses = state.activeFilters.contains(CalendarFilter.KULIAH) && hari.items.isNotEmpty()
+                            val hasTasks = state.activeFilters.contains(CalendarFilter.TUGAS) && hari.tasks.isNotEmpty()
+                            val hasAcademic = state.activeFilters.contains(CalendarFilter.AKADEMIK) && hari.academic.isNotEmpty()
+
+                            if (hasClasses || hasTasks || hasAcademic) {
+                                Text(
+                                    text = hari.label.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = ForfhColors.LinearIndigo,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
+                                )
+
+                                // 1. Classes first
+                                if (hasClasses) {
+                                    hari.items.forEach {
+                                        NotionEventCard(it)
+                                        Spacer(Modifier.height(8.dp))
+                                    }
+                                }
+
+                                // 2. Tasks second
+                                if (hasTasks) {
+                                    hari.tasks.forEach { task ->
+                                        TaskDayCard(task)
+                                        Spacer(Modifier.height(6.dp))
+                                    }
+                                }
+
+                                // 3. Academic at the bottom
+                                if (hasAcademic) {
+                                    hari.academic.forEach { acad ->
+                                        AcademicAllDayBanner(acad)
+                                        Spacer(Modifier.height(6.dp))
+                                    }
+                                }
+                            }
                         }
                     }
-                } else {
-                    items(state.week) { hari ->
-                        if (hari.items.isNotEmpty()) {
-                            Text(
-                                text = hari.label.uppercase(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = ForfhColors.LinearIndigo,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
+
+                    // TAB 2: BULAN (Notion Calendar Grid + Agenda)
+                    2 -> {
+                        item {
+                            CalendarMonthGrid(
+                                viewModel = viewModel,
+                                state = state,
                             )
-                            hari.items.forEach {
-                                NotionEventCard(it)
-                                Spacer(Modifier.height(8.dp))
-                            }
+                        }
+
+                        item {
+                            CalendarDayAgenda(
+                                date = state.selectedDate,
+                                events = state.getEventsForDate(state.selectedDate),
+                            )
                         }
                     }
                 }
@@ -232,6 +362,153 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CalendarFilterChip(
+    label: String,
+    color: Color,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val bg = if (selected) color.copy(alpha = 0.15f) else ForfhColors.Surface1
+    val border = if (selected) color.copy(alpha = 0.45f) else ForfhColors.BorderSubtle
+    val textC = if (selected) color else ForfhColors.TextMuted
+
+    Surface(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(6.dp),
+        color = bg,
+        border = BorderStroke(1.dp, border),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) color else ForfhColors.TextMuted.copy(alpha = 0.4f))
+            )
+            Text(
+                text = label,
+                style = ForfhTypeExtras.MonoMeta.copy(fontSize = 11.sp),
+                color = textC,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AcademicAllDayBanner(item: AcademicEventItem) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = ForfhColors.SurfaceSecondary,
+        border = BorderStroke(1.dp, ForfhColors.BorderSubtle),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(ForfhColors.SurfaceHover),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = null,
+                    tint = ForfhColors.TextSecondary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = ForfhColors.TextPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                val range = listOfNotNull(item.rawStart, item.rawEnd).filter { it.isNotBlank() }.joinToString(" s.d. ")
+                if (range.isNotBlank()) {
+                    Text(
+                        text = range,
+                        style = ForfhTypeExtras.MonoMeta.copy(fontSize = 11.sp),
+                        color = ForfhColors.TextMuted,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskDayCard(task: TaskCalendarItem) {
+    val isDone = task.status == "DONE"
+    val isOverdue = task.computedStatus == "OVERDUE" && !isDone
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = ForfhColors.Surface1,
+        border = BorderStroke(1.dp, ForfhColors.BorderSubtle),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = if (isDone) ForfhColors.StatusSuccess else if (isOverdue) ForfhColors.PriorityP1 else ForfhColors.PriorityP2,
+                modifier = Modifier.size(18.dp),
+            )
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (isDone) ForfhColors.TextMuted else ForfhColors.TextPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    task.courseName?.let {
+                        Text(
+                            text = it,
+                            style = ForfhTypeExtras.MonoMeta.copy(fontSize = 11.sp),
+                            color = ForfhColors.TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (task.dueTimeText.isNotBlank()) {
+                        Text(
+                            text = "· ${task.dueTimeText}",
+                            style = ForfhTypeExtras.MonoMeta.copy(fontSize = 11.sp),
+                            color = if (isOverdue) ForfhColors.PriorityP1 else ForfhColors.TextMuted,
+                        )
+                    }
+                }
+            }
+
+            ForfhPriorityPill(priority = task.priority)
         }
     }
 }
@@ -381,7 +658,7 @@ private fun courseColor(hex: String?): Color =
 
 /**
  * Notion Calendar Event Card:
- * Tinted background 12%, 3.5dp solid left accent strip, monospaced time, clean room badge.
+ * Tinted background 10%, 3.5dp solid left accent strip, monospaced time, clean room badge.
  */
 @Composable
 private fun NotionEventCard(item: JadwalItem) {

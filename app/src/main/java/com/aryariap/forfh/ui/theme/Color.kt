@@ -142,4 +142,7 @@ object ForfhColors {
     val Danger = Color(0xFFEF4444)
     val Success = Color(0xFF10B981)
     val Warning = Color(0xFFF59E0B)
+    val LinearPurple = Color(0xFFA855F7)
+    val Surface1 = SurfaceElevated
+    val StatusSuccess = StatusSelesaiFg
 }
