@@ -2,13 +2,15 @@ package com.aryariap.forfh.ui
 
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object UiFormat {
-    private val deadlineFmt = DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale("id", "ID"))
+    private val localeId = Locale("id", "ID")
+    private val deadlineFmt = DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", localeId)
     private val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
 
     /** dueAt epoch ms → tanggal WIB. Null → "Tanpa deadline". */
@@ -64,37 +66,109 @@ object UiFormat {
         else -> "belum pernah"
     }
 
-    private val monthYearFmt = DateTimeFormatter.ofPattern("MMMM yyyy", Locale("id", "ID"))
-    private val fullDateFmt = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale("id", "ID"))
-    private val shortDateFmt = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
+    private val monthYearFmt = DateTimeFormatter.ofPattern("MMMM yyyy", localeId)
+    private val fullDateFmt = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", localeId)
+    private val shortDateFmt = DateTimeFormatter.ofPattern("d MMM yyyy", localeId)
 
     fun monthYear(yearMonth: java.time.YearMonth): String = yearMonth.format(monthYearFmt)
-    fun fullDateIndonesian(localDate: java.time.LocalDate): String = localDate.format(fullDateFmt)
-    fun shortDateIndonesian(localDate: java.time.LocalDate): String = localDate.format(shortDateFmt)
+    fun fullDateIndonesian(localDate: LocalDate): String = localDate.format(fullDateFmt)
+    fun shortDateIndonesian(localDate: LocalDate): String = localDate.format(shortDateFmt)
 
-    fun parseDateRobust(dateStr: String?): java.time.LocalDate? {
+    private val MONTH_NAMES = arrayOf(
+        "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    )
+
+    private val SHORT_MONTH_NAMES = arrayOf(
+        "", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+        "Jul", "Ags", "Sep", "Okt", "Nov", "Des"
+    )
+
+    fun parseDateRobust(dateStr: String?): LocalDate? {
         if (dateStr.isNullOrBlank()) return null
         val clean = dateStr.trim()
         return runCatching {
             if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
-                java.time.LocalDate.parse(clean.take(10))
+                LocalDate.parse(clean.take(10))
             } else if (clean.contains("/")) {
                 val parts = clean.split("/")
                 if (parts.size == 3) {
                     if (parts[2].length == 4) { // dd/MM/yyyy
-                        java.time.LocalDate.of(parts[2].toInt(), parts[1].toInt(), parts[0].toInt())
+                        LocalDate.of(parts[2].toInt(), parts[1].toInt(), parts[0].toInt())
                     } else { // yyyy/MM/dd
-                        java.time.LocalDate.of(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
+                        LocalDate.of(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
                     }
                 } else null
             } else if (clean.contains("-")) {
                 val parts = clean.split("-")
                 if (parts.size == 3 && parts[2].length == 4) { // dd-MM-yyyy
-                    java.time.LocalDate.of(parts[2].toInt(), parts[1].toInt(), parts[0].toInt())
+                    LocalDate.of(parts[2].toInt(), parts[1].toInt(), parts[0].toInt())
                 } else null
             } else {
-                java.time.LocalDate.parse(clean)
+                LocalDate.parse(clean)
             }
         }.getOrNull()
+    }
+
+    fun parseTimeRobust(dateStr: String?): String? {
+        if (dateStr.isNullOrBlank()) return null
+        val clean = dateStr.trim()
+        if (clean.contains("T")) {
+            val afterT = clean.substringAfter("T")
+            if (afterT.length >= 5 && afterT[2] == ':') {
+                return afterT.take(5)
+            }
+        } else if (clean.contains(" ")) {
+            val afterSpace = clean.substringAfter(" ")
+            if (afterSpace.length >= 5 && afterSpace[2] == ':') {
+                return afterSpace.take(5)
+            }
+        }
+        return null
+    }
+
+    /**
+     * Format rentang kalender akademik ke Bahasa Indonesia yang manusiawi dan elegan.
+     * Contoh:
+     * - "3 – 19 Agustus 2026 · 08:00 – 16:00 WIB"
+     * - "13 Juli – 29 Agustus 2026"
+     * - "18 Agustus 2026 · 08:00 WIB"
+     */
+    fun formatAcademicRange(rawStart: String?, rawEnd: String?): String {
+        val sDate = parseDateRobust(rawStart)
+        val eDate = parseDateRobust(rawEnd) ?: sDate
+        val sTime = parseTimeRobust(rawStart)
+        val eTime = parseTimeRobust(rawEnd)
+
+        if (sDate == null) {
+            return listOfNotNull(rawStart, rawEnd).filter { it.isNotBlank() }.joinToString(" – ")
+        }
+
+        val datePart = when {
+            eDate == null || eDate == sDate -> {
+                "${sDate.dayOfMonth} ${MONTH_NAMES.getOrElse(sDate.monthValue) { "" }} ${sDate.year}"
+            }
+            sDate.year == eDate.year && sDate.monthValue == eDate.monthValue -> {
+                "${sDate.dayOfMonth} – ${eDate.dayOfMonth} ${MONTH_NAMES.getOrElse(sDate.monthValue) { "" }} ${sDate.year}"
+            }
+            sDate.year == eDate.year -> {
+                "${sDate.dayOfMonth} ${SHORT_MONTH_NAMES.getOrElse(sDate.monthValue) { "" }} – ${eDate.dayOfMonth} ${SHORT_MONTH_NAMES.getOrElse(eDate.monthValue) { "" }} ${sDate.year}"
+            }
+            else -> {
+                "${sDate.dayOfMonth} ${SHORT_MONTH_NAMES.getOrElse(sDate.monthValue) { "" }} ${sDate.year} – ${eDate.dayOfMonth} ${SHORT_MONTH_NAMES.getOrElse(eDate.monthValue) { "" }} ${eDate.year}"
+            }
+        }
+
+        val hasMeaningfulTime = (sTime != null && sTime != "00:00") || (eTime != null && eTime != "00:00")
+        val timePart = if (hasMeaningfulTime) {
+            when {
+                sTime != null && eTime != null && sTime != eTime -> " · $sTime – $eTime WIB"
+                sTime != null -> " · $sTime WIB"
+                eTime != null -> " · s.d. $eTime WIB"
+                else -> ""
+            }
+        } else ""
+
+        return datePart + timePart
     }
 }

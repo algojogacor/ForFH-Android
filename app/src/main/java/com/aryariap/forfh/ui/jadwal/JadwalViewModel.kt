@@ -57,11 +57,22 @@ data class AcademicEventItem(
     val rawEnd: String?,
     val extras: List<Pair<String, String>> = emptyList(),
 ) {
+    val dateRangeText: String
+        get() = UiFormat.formatAcademicRange(rawStart, rawEnd)
+
+    fun statusBadge(targetDate: LocalDate): String {
+        return when {
+            endDate != null && endDate == targetDate -> "Berakhir Hari Ini"
+            startDate != null && startDate == targetDate -> "Mulai Hari Ini"
+            endDate != null && endDate == targetDate.plusDays(1) -> "Berakhir Besok"
+            else -> "Sedang Berlangsung"
+        }
+    }
+
     fun spansAcross(date: LocalDate): Boolean {
-        if (startDate == null && endDate == null) return false
-        val s = startDate ?: endDate ?: return false
-        val e = endDate ?: startDate ?: return false
-        return !date.isBefore(s) && !date.isAfter(e)
+        if (startDate == null) return false
+        val end = endDate ?: startDate
+        return !date.isBefore(startDate) && !date.isAfter(end)
     }
 }
 
@@ -195,7 +206,12 @@ class JadwalViewModel(private val container: com.aryariap.forfh.JadwalContainer)
                 // Calculate today and week views
                 val todayClasses = schedules.filter { it.dayIndex == todayIdx && it.enabled }
                 val todayTasks = tasks.filter { it.dueDate == todayDate }
-                val todayAcademic = academicEvents.filter { it.spansAcross(todayDate) }
+                val todayAcademic = academicEvents
+                    .filter { it.spansAcross(todayDate) }
+                    .sortedWith(compareBy(
+                        { if (it.endDate == todayDate) 0 else if (it.startDate == todayDate) 1 else if (it.endDate != null && it.endDate <= todayDate.plusDays(7)) 2 else 3 },
+                        { it.endDate ?: LocalDate.MAX }
+                    ))
 
                 // Week days for the current week
                 val weekStartMonday = todayDate.minusDays(((todayDate.dayOfWeek.value - 1) % 7).toLong())

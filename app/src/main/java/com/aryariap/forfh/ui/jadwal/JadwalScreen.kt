@@ -433,17 +433,44 @@ private fun AcademicAllDayBanner(item: AcademicEventItem) {
                     modifier = Modifier.size(16.dp),
                 )
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = ForfhColors.TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                val range = listOfNotNull(item.rawStart, item.rawEnd).filter { it.isNotBlank() }.joinToString(" s.d. ")
-                if (range.isNotBlank()) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                val today = LocalDate.now(ZoneId.of("Asia/Jakarta"))
+                val badge = item.statusBadge(today)
+                val isEnding = badge == "Berakhir Hari Ini" || badge == "Berakhir Besok"
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = range,
+                        text = item.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = ForfhColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+
+                    if (badge != "Sedang Berlangsung") {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (isEnding) ForfhColors.PriorityP2.copy(alpha = 0.15f) else ForfhColors.SurfaceHover,
+                            border = BorderStroke(1.dp, if (isEnding) ForfhColors.PriorityP2.copy(alpha = 0.3f) else ForfhColors.BorderSubtle)
+                        ) {
+                            Text(
+                                text = badge,
+                                style = ForfhTypeExtras.MonoMeta.copy(fontSize = 10.sp),
+                                color = if (isEnding) ForfhColors.PriorityP2 else ForfhColors.TextMuted,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (item.dateRangeText.isNotBlank()) {
+                    Text(
+                        text = item.dateRangeText,
                         style = ForfhTypeExtras.MonoMeta.copy(fontSize = 11.sp),
                         color = ForfhColors.TextMuted,
                     )
