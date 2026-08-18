@@ -92,6 +92,27 @@ private fun openBrowser(context: Context, url: String) {
     }
 }
 
+private fun resolveTaskUrl(item: TugasItem): Pair<String, String> {
+    // 1. Cek apakah ada URL eksplisit di dalam deskripsi tugas
+    val urlsInDesc = extractUrls(item.description.orEmpty())
+    if (urlsInDesc.isNotEmpty()) {
+        val u = urlsInDesc.first()
+        val label = if (u.contains("hebat.elearning.unair.ac.id")) "Buka Modul Tugas di HEBAT" else "Buka Tautan Tugas"
+        return u to label
+    }
+
+    // 2. Cek externalId (format Moodle iCal: "71902@hebat.elearning.unair.ac.id" atau "71902")
+    item.externalId?.let { ext ->
+        val digits = Regex("(\\d+)").find(ext)?.groupValues?.get(1)
+        if (!digits.isNullOrBlank()) {
+            return "https://hebat.elearning.unair.ac.id/calendar/view.php?view=event&id=$digits" to "Buka Pengumpulan di HEBAT"
+        }
+    }
+
+    // 3. Fallback ke homepage HEBAT UNAIR
+    return "https://hebat.elearning.unair.ac.id" to "Buka di HEBAT e-Learning"
+}
+
 @Composable
 fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
     val state by viewModel.state.collectAsState()
@@ -235,16 +256,15 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                 }
             }
 
-            // Extract URLs from description
+            // Resolve direct HEBAT assignment / event URL
+            val (taskUrl, actionTitle) = resolveTaskUrl(item)
             val rawDesc = item.description.orEmpty()
-            val extractedUrls = extractUrls(rawDesc)
-            val primaryUrl = extractedUrls.firstOrNull() ?: "https://hebat.elearning.unair.ac.id"
 
             // Dedicated Action Card: Buka di HEBAT e-Learning
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { openBrowser(context, primaryUrl) },
+                    .clickable { openBrowser(context, taskUrl) },
                 shape = RoundedCornerShape(10.dp),
                 color = ForfhColors.LinearIndigo.copy(alpha = 0.12f),
                 border = BorderStroke(1.dp, ForfhColors.LinearIndigo.copy(alpha = 0.35f)),
@@ -270,13 +290,13 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Buka Pengumpulan di HEBAT",
+                            text = actionTitle,
                             style = MaterialTheme.typography.titleSmall,
                             color = ForfhColors.TextPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = primaryUrl,
+                            text = taskUrl,
                             style = ForfhTypeExtras.MonoMeta,
                             color = ForfhColors.LinearIndigo,
                             maxLines = 1,

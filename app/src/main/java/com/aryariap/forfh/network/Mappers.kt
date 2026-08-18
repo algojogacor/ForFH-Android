@@ -37,6 +37,7 @@ fun TaskDto.toEntity(nowMs: Long): TaskEntity = TaskEntity(
     priority = priority,
     courseColor = course?.color,
     subtasksJson = subtasks.takeIf { it.isNotEmpty() }?.let { subtasksJsonCodec.encodeToString(it) },
+    externalId = externalId,
 )
 
 /** OVERDUE dinamis: status != DONE dan dueAt di masa lalu (spesifikasi list endpoint). */

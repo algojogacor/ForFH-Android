@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         KampusInfoEntity::class,
         KampusMetaEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -46,6 +46,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** V3 → V4: kolom externalId di tabel tasks untuk tautan langsung event HEBAT. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `tasks` ADD COLUMN `externalId` TEXT")
+            }
+        }
+
         // SQL CREATE TABLE tabel info kampus (schema V2). internal + const (bukan private):
         // dipakai bersama Migration12Test — contract test JVM yang menjaga SQL ini tetap sinkron
         // dengan entity (schema drift → test merah). Runtime Room menvalidasi migrasi sesungguhnya
@@ -67,7 +74,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "forfh.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration(true)
                 .build()
     }

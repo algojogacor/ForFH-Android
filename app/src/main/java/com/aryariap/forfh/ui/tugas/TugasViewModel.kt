@@ -51,6 +51,7 @@ data class TugasItem(
     val description: String?,
     val subtasksJson: String?, // dipakai TugasDetailScreen (koreksi controller #1)
     val syncState: String,     // PENDING/SYNCED/FAILED (Task 10) — chip status di list
+    val externalId: String? = null,
 )
 
 data class TugasUiState(
@@ -172,5 +173,6 @@ class TugasViewModel(private val container: TugasContainer) : ViewModel() {
         description = description,
         subtasksJson = subtasksJson,
         syncState = syncState,
+        externalId = externalId,
     )
 }

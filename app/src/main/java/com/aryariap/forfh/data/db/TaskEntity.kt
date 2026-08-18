@@ -30,6 +30,7 @@ data class TaskEntity(
      */
     @ColumnInfo(defaultValue = "'SYNCED'")
     val syncState: String = "SYNCED",
+    val externalId: String? = null,
 ) {
     /** Nilai kolom syncState — konstanta (bukan enum) mengikuti gaya kolom lain yang String. */
     object SyncState {
