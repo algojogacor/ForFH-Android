@@ -83,6 +83,7 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
 
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
+        containerColor = ForfhColors.PitchBlack,
         topBar = {
             ForfhTopBar(
                 title = "Atur",

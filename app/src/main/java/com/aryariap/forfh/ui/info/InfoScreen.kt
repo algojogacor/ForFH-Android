@@ -50,6 +50,7 @@ fun InfoScreen(viewModel: InfoViewModel) {
 
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
+        containerColor = ForfhColors.PitchBlack,
         topBar = {
             ForfhTopBar(
                 title = "Info",
@@ -59,7 +60,7 @@ fun InfoScreen(viewModel: InfoViewModel) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
                             contentDescription = "Sinkronkan",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = ForfhColors.TextSecondary,
                         )
                     }
                 },

@@ -3,6 +3,7 @@ package com.aryariap.forfh.ui.jadwal
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
@@ -41,11 +43,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.info.SyncActivity
 import com.aryariap.forfh.ui.theme.ForfhColors
@@ -83,9 +85,15 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
     }
 
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
+        modifier = Modifier
+            .background(ForfhColors.PitchBlack)
+            .statusBarsPadding(),
         topBar = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ForfhColors.PitchBlack)
+            ) {
                 ForfhTopBar(
                     title = "Jadwal",
                     eyebrow = todayFormatted,
@@ -94,42 +102,43 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                             Icon(
                                 imageVector = Icons.Filled.Refresh,
                                 contentDescription = "Sinkronkan",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = ForfhColors.TextSecondary,
                             )
                         }
                     },
                 )
-                // Segmented Tab Switcher (Hari ini / Seminggu)
+
+                // Linear Segmented Tab Switcher (Hari ini / Seminggu)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 4.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(4.dp),
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ForfhColors.SurfaceSecondary)
+                        .padding(3.dp),
                 ) {
                     listOf("Hari ini", "Seminggu").forEachIndexed { index, label ->
                         val selected = tab == index
                         val bg by animateColorAsState(
-                            if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
+                            if (selected) ForfhColors.SurfaceHover else Color.Transparent,
                             label = "tabBg",
                         )
                         val textColor by animateColorAsState(
-                            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            if (selected) ForfhColors.TextPrimary else ForfhColors.TextMuted,
                             label = "tabText",
                         )
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(RoundedCornerShape(6.dp))
                                 .background(bg)
                                 .clickable { tab = index }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 7.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = label,
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = textColor,
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                             )
@@ -144,12 +153,13 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
             onRefresh = viewModel::syncNow,
             modifier = Modifier
                 .fillMaxSize()
+                .background(ForfhColors.PitchBlack)
                 .padding(padding),
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (tab == 0) {
                     if (nextUp.nextClass != null || nextUp.nextAlarm != null) {
@@ -176,22 +186,23 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                                     Text(
                                         text = "Tidak Ada Kuliah Hari Ini",
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = ForfhColors.TextPrimary,
                                     )
                                     Text(
                                         text = "Nikmati waktu istirahat atau pelajari materi berikutnya.",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = ForfhColors.TextMuted,
                                     )
                                 }
                             }
                         }
                     } else {
+                        // Notion Real-Time Timeline Indicator
                         item {
                             NotionCurrentTimeLine(nowMs = nowMs)
                         }
                         items(state.today) { item ->
-                            ScheduleRowCard(item)
+                            NotionEventCard(item)
                         }
                     }
                 } else {
@@ -200,12 +211,12 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                             Text(
                                 text = hari.label.uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary,
+                                color = ForfhColors.LinearIndigo,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                                modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
                             )
                             hari.items.forEach {
-                                ScheduleRowCard(it)
+                                NotionEventCard(it)
                                 Spacer(Modifier.height(8.dp))
                             }
                         }
@@ -216,7 +227,7 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                     Text(
                         text = "Terakhir sinkron: ${UiFormat.syncInfo(state.lastSyncStatus, state.lastSyncAt)}",
                         style = ForfhTypeExtras.MonoMeta,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = ForfhColors.TextMuted,
                         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                     )
                 }
@@ -238,133 +249,127 @@ private fun NextUpHeroCard(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = ForfhColors.NavyDark,
-        border = BorderStroke(1.dp, ForfhColors.Brass.copy(alpha = 0.35f)),
+        shape = RoundedCornerShape(12.dp),
+        color = ForfhColors.SurfaceElevated,
+        border = BorderStroke(1.dp, ForfhColors.BorderStrong),
     ) {
-        Box(
-            modifier = Modifier.background(
-                Brush.horizontalGradient(
-                    listOf(ForfhColors.NavyDark, ForfhColors.NavyHeroEnd)
-                )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Left Accent Strip (3.5dp)
+            Box(
+                modifier = Modifier
+                    .width(3.5.dp)
+                    .height(130.dp)
+                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
+                    .background(accent)
             )
-        ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                // Dynamic 5dp left accent strip
-                Box(
-                    modifier = Modifier
-                        .width(5.dp)
-                        .height(140.dp)
-                        .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
-                        .background(accent)
-                )
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "KELAS BERIKUTNYA",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = ForfhColors.Brass,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
-                        )
+                    Text(
+                        text = "KELAS BERIKUTNYA",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ForfhColors.LinearIndigo,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
+                    )
 
-                        state.nextAlarm?.let {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(Color.White.copy(alpha = 0.12f))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Notifications,
-                                    contentDescription = "Alarm",
-                                    tint = ForfhColors.Brass,
-                                    modifier = Modifier.size(13.dp),
-                                )
-                                Text(
-                                    text = UiFormat.timeOf(it.triggerAtMillis, wib),
-                                    style = ForfhTypeExtras.MonoMeta,
-                                    color = Color.White,
-                                )
-                            }
-                        }
-                    }
-
-                    state.nextClass?.let { (kls, start) ->
-                        Text(
-                            text = kls.courseName,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-
+                    state.nextAlarm?.let {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom,
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(ForfhColors.SurfaceSecondary)
+                                .border(BorderStroke(1.dp, ForfhColors.BorderSubtle), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
                         ) {
-                            Column {
-                                Text(
-                                    text = "Mulai dalam",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                )
-                                Text(
-                                    text = UiFormat.countdownTo(now, start),
-                                    style = ForfhTypeExtras.MonoCountdown,
-                                    color = ForfhColors.Brass,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-
+                            Icon(
+                                imageVector = Icons.Filled.Notifications,
+                                contentDescription = "Alarm",
+                                tint = ForfhColors.Warning,
+                                modifier = Modifier.size(12.dp),
+                            )
                             Text(
-                                text = "${UiFormat.timeOf(start)} WIB",
+                                text = UiFormat.timeOf(it.triggerAtMillis, wib),
                                 style = ForfhTypeExtras.MonoMeta,
-                                color = Color.White.copy(alpha = 0.9f),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color.White.copy(alpha = 0.12f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                color = ForfhColors.TextPrimary,
                             )
                         }
                     }
+                }
 
-                    if (state.mutedToday) {
-                        Text(
-                            text = "Aktifkan lagi alarm hari ini",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = ForfhColors.Brass,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onUnmute() }
-                                .padding(vertical = 4.dp),
-                        )
-                    } else if (state.nextAlarm != null) {
-                        Text(
-                            text = "Senyapkan alarm hari ini",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.75f),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onMute() }
-                                .padding(vertical = 4.dp),
-                        )
+                state.nextClass?.let { (kls, start) ->
+                    Text(
+                        text = kls.courseName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = ForfhColors.TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        Column {
+                            Text(
+                                text = "Mulai dalam",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ForfhColors.TextMuted,
+                            )
+                            Text(
+                                text = UiFormat.countdownTo(now, start),
+                                style = ForfhTypeExtras.MonoCountdown,
+                                color = ForfhColors.LinearIndigo,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = ForfhColors.SurfaceSecondary,
+                            border = BorderStroke(1.dp, ForfhColors.BorderSubtle),
+                        ) {
+                            Text(
+                                text = "${UiFormat.timeOf(start)} WIB",
+                                style = ForfhTypeExtras.MonoMeta,
+                                color = ForfhColors.TextPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
                     }
+                }
+
+                if (state.mutedToday) {
+                    Text(
+                        text = "Aktifkan lagi alarm hari ini",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ForfhColors.LinearIndigo,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clickable { onUnmute() }
+                            .padding(vertical = 2.dp),
+                    )
+                } else if (state.nextAlarm != null) {
+                    Text(
+                        text = "Senyapkan alarm hari ini",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ForfhColors.TextMuted,
+                        modifier = Modifier
+                            .clickable { onMute() }
+                            .padding(vertical = 2.dp),
+                    )
                 }
             }
         }
@@ -372,59 +377,106 @@ private fun NextUpHeroCard(
 }
 
 private fun courseColor(hex: String?): Color =
-    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(ForfhColors.Navy)
+    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(ForfhColors.LinearIndigo)
 
+/**
+ * Notion Calendar Event Card:
+ * Tinted background 12%, 3.5dp solid left accent strip, monospaced time, clean room badge.
+ */
 @Composable
-private fun ScheduleRowCard(item: JadwalItem) {
-    ForfhSurface(accent = courseColor(item.color)) {
+private fun NotionEventCard(item: JadwalItem) {
+    val accent = courseColor(item.color)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = accent.copy(alpha = 0.10f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.30f)),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(end = 14.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Time Column
+            // Notion Left Accent Strip
+            Box(
+                modifier = Modifier
+                    .width(3.5.dp)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp))
+                    .background(accent)
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            // Time Range Column (Monospaced Notion Style)
             Column(
-                modifier = Modifier.width(56.dp),
+                modifier = Modifier.width(52.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
                     text = UiFormat.timeText(item.startTime),
                     style = ForfhTypeExtras.MonoMeta,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = ForfhColors.TextPrimary,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = UiFormat.timeText(item.endTime),
                     style = ForfhTypeExtras.MonoMeta,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = ForfhColors.TextMuted,
                 )
             }
 
-            // Details Column
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Spacer(Modifier.width(12.dp))
+
+            // Course & Room Info
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
                     text = item.courseName,
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = ForfhColors.TextPrimary,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = buildString {
-                        when {
-                            item.onlineUrl != null -> append("Daring")
-                            !item.room.isNullOrBlank() -> append(item.room)
-                            else -> append("FH UNAIR")
-                        }
-                        item.courseCode?.let { append(" · $it") }
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = ForfhColors.SurfaceSecondary.copy(alpha = 0.8f),
+                        border = BorderStroke(1.dp, ForfhColors.BorderSubtle),
+                    ) {
+                        Text(
+                            text = when {
+                                item.onlineUrl != null -> "Daring"
+                                !item.room.isNullOrBlank() -> item.room
+                                else -> "FH UNAIR"
+                            },
+                            style = ForfhTypeExtras.MonoMeta,
+                            color = ForfhColors.TextSecondary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+
+                    item.courseCode?.let { code ->
+                        Text(
+                            text = code,
+                            style = ForfhTypeExtras.MonoMeta,
+                            color = ForfhColors.TextMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
     }
@@ -450,7 +502,7 @@ private fun NotionCurrentTimeLine(nowMs: Long) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
+                .clip(CircleShape)
                 .background(ForfhColors.NotionTimeIndicator)
         )
 
@@ -466,6 +518,7 @@ private fun NotionCurrentTimeLine(nowMs: Long) {
         Surface(
             shape = RoundedCornerShape(4.dp),
             color = ForfhColors.NotionTimeIndicator.copy(alpha = 0.15f),
+            border = BorderStroke(1.dp, ForfhColors.NotionTimeIndicator.copy(alpha = 0.4f)),
         ) {
             Text(
                 text = "$timeStr WIB",

@@ -54,16 +54,17 @@ fun ForfhSurface(
     modifier: Modifier = Modifier,
     accent: Color? = null,
     onClick: (() -> Unit)? = null,
-    shape: RoundedCornerShape = RoundedCornerShape(18.dp),
-    border: BorderStroke = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    shape: RoundedCornerShape = RoundedCornerShape(12.dp),
+    border: BorderStroke = BorderStroke(1.dp, ForfhColors.BorderSubtle),
+    backgroundColor: Color = MaterialTheme.colorScheme.surface,
     content: @Composable () -> Unit,
 ) {
     Surface(
         modifier = modifier.then(
-            if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+            if (onClick != null) Modifier.clip(shape).clickable(onClick = onClick) else Modifier,
         ),
         shape = shape,
-        color = MaterialTheme.colorScheme.surface,
+        color = backgroundColor,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         border = border,
@@ -72,9 +73,9 @@ fun ForfhSurface(
             if (accent != null) {
                 Box(
                     Modifier
-                        .width(5.dp)
+                        .width(3.5.dp)
                         .height(64.dp)
-                        .clip(RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp))
+                        .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
                         .background(accent),
                 )
             }
@@ -348,35 +349,35 @@ fun ForfhNavDock(
     )
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp,
+        color = ForfhColors.PitchBlack,
+        shadowElevation = 0.dp,
         tonalElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+        border = BorderStroke(1.dp, ForfhColors.BorderSubtle),
     ) {
         Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 destinations.forEachIndexed { index, destination ->
                     val selected = index == selectedIndex
                     val color by animateColorAsState(
-                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        if (selected) ForfhColors.LinearIndigo else ForfhColors.TextMuted,
                         label = "navColor",
                     )
                     val bgColor by animateColorAsState(
-                        if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        if (selected) ForfhColors.LinearIndigoSubtle else Color.Transparent,
                         label = "navBg",
                     )
                     Column(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(bgColor)
                             .clickable { onSelect(index) }
-                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                            .padding(horizontal = 18.dp, vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
@@ -384,7 +385,7 @@ fun ForfhNavDock(
                             imageVector = destination.icon,
                             contentDescription = destination.label,
                             tint = color,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(20.dp),
                         )
                         Text(
                             text = destination.label,

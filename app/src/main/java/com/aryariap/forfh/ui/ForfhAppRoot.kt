@@ -1,5 +1,6 @@
 package com.aryariap.forfh.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -29,6 +30,7 @@ import com.aryariap.forfh.ui.login.LoginScreen
 import com.aryariap.forfh.ui.login.LoginViewModel
 import com.aryariap.forfh.ui.pengaturan.PengaturanScreen
 import com.aryariap.forfh.ui.pengaturan.PengaturanViewModel
+import com.aryariap.forfh.ui.theme.ForfhColors
 import com.aryariap.forfh.ui.theme.ForfhNavDock
 import com.aryariap.forfh.ui.tugas.TugasListScreen
 import com.aryariap.forfh.ui.tugas.TugasViewModel
@@ -100,6 +102,7 @@ private fun MainScaffold(container: AppContainer, startTab: Int?) {
     val pengaturanVm: PengaturanViewModel = viewModel(factory = simpleFactory { PengaturanViewModel(containerApp) })
 
     Scaffold(
+        containerColor = ForfhColors.PitchBlack,
         bottomBar = {
             ForfhNavDock(
                 selectedIndex = tab,
@@ -107,7 +110,11 @@ private fun MainScaffold(container: AppContainer, startTab: Int?) {
             )
         },
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .background(ForfhColors.PitchBlack)
+        ) {
             when (tab) {
                 0 -> JadwalScreen(jadwalVm, nextUpVm)
                 1 -> TugasListScreen(tugasVm)

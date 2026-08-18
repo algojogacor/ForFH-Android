@@ -1,6 +1,8 @@
 package com.aryariap.forfh.ui.tugas
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,10 +52,12 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
 
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
+        containerColor = ForfhColors.PitchBlack,
         topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(ForfhColors.PitchBlack)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -62,13 +66,13 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Kembali",
-                        tint = MaterialTheme.colorScheme.onSurface,
+                        tint = ForfhColors.TextPrimary,
                     )
                 }
                 Text(
                     text = "Detail Tugas",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = ForfhColors.TextPrimary,
                 )
             }
         },
@@ -77,7 +81,8 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(ForfhColors.PitchBlack)
+                        .border(BorderStroke(1.dp, ForfhColors.BorderSubtle))
                         .padding(horizontal = 18.dp, vertical = 12.dp)
                 ) {
                     PrimaryButton(

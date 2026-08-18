@@ -109,8 +109,13 @@ fun TugasListScreen(viewModel: TugasViewModel) {
 
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
+        containerColor = ForfhColors.PitchBlack,
         topBar = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ForfhColors.PitchBlack)
+            ) {
                 ForfhTopBar(
                     title = "Tugas",
                     eyebrow = "${activeTasks.size} TUGAS AKTIF",
@@ -119,7 +124,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                             Icon(
                                 imageVector = Icons.Filled.Refresh,
                                 contentDescription = "Sinkronkan",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = ForfhColors.TextSecondary,
                             )
                         }
                     },
