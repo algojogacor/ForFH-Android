@@ -1,8 +1,13 @@
 package com.aryariap.forfh.ui.tugas
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,16 +19,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,9 +41,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.text.HtmlCompat
 import com.aryariap.forfh.network.SubtaskDto
 import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.theme.ForfhColors
@@ -42,13 +57,47 @@ import com.aryariap.forfh.ui.theme.ForfhSurface
 import com.aryariap.forfh.ui.theme.ForfhTypeExtras
 import com.aryariap.forfh.ui.theme.PrimaryButton
 import java.time.ZoneId
+import java.util.regex.Pattern
 import kotlinx.serialization.json.Json
+
+private val URL_PATTERN = Pattern.compile(
+    "(https?://[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]+)",
+    Pattern.CASE_INSENSITIVE
+)
+
+private fun extractUrls(text: String): List<String> {
+    val matcher = URL_PATTERN.matcher(text)
+    val urls = mutableListOf<String>()
+    while (matcher.find()) {
+        matcher.group(1)?.let { urls.add(it) }
+    }
+    return urls
+}
+
+private fun cleanHtmlText(html: String): String {
+    return runCatching {
+        HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
+    }.getOrDefault(html.replace(Regex("<[^>]*>"), " ").trim())
+}
+
+private fun openBrowser(context: Context, url: String) {
+    try {
+        val target = if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target.trim())).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Gagal membuka tautan: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
+}
 
 @Composable
 fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
     val state by viewModel.state.collectAsState()
     val zone = ZoneId.of("Asia/Jakarta")
     val item = state.detail
+    val context = LocalContext.current
 
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
@@ -106,7 +155,7 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                 Text(
                     text = "Tugas tidak ditemukan.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = ForfhColors.TextMuted,
                 )
                 return@Column
             }
@@ -126,10 +175,16 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                 }
                 ForfhStatusPill(text = statusLabel, foreground = statusFg, background = statusBg)
 
+                val priorityColor = when (item.priority.lowercase()) {
+                    "urgent", "p1" -> ForfhColors.PriorityP1
+                    "high", "p2" -> ForfhColors.PriorityP2
+                    "medium", "p3" -> ForfhColors.PriorityP3
+                    else -> ForfhColors.PriorityP4
+                }
                 ForfhStatusPill(
                     text = "Prioritas ${item.priority.replaceFirstChar { it.uppercase() }}",
-                    foreground = MaterialTheme.colorScheme.secondary,
-                    background = MaterialTheme.colorScheme.secondaryContainer,
+                    foreground = priorityColor,
+                    background = priorityColor.copy(alpha = 0.15f),
                 )
             }
 
@@ -139,14 +194,15 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                     Text(
                         text = "$it ${item.courseCode ?: ""}".trim(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
+                        color = ForfhColors.LinearIndigo,
                         fontWeight = FontWeight.Bold,
                     )
                 }
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = ForfhColors.TextPrimary,
+                    fontWeight = FontWeight.Bold,
                 )
             }
 
@@ -166,20 +222,77 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                         Text(
                             text = "DEADLINE PENGUMPULAN",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = ForfhColors.TextMuted,
                         )
                         Text(
                             text = item.dueAt?.let { UiFormat.deadline(it, zone) } ?: "Tanpa deadline",
                             style = ForfhTypeExtras.MonoMeta,
-                            color = if (item.computedStatus == "OVERDUE" && item.status != "DONE") MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.primary,
+                            color = if (item.computedStatus == "OVERDUE" && item.status != "DONE") ForfhColors.PriorityP1
+                            else ForfhColors.LinearIndigo,
                             fontWeight = FontWeight.Bold,
                         )
                     }
                 }
             }
 
-            // Description Card
+            // Extract URLs from description
+            val rawDesc = item.description.orEmpty()
+            val extractedUrls = extractUrls(rawDesc)
+            val primaryUrl = extractedUrls.firstOrNull() ?: "https://hebat.elearning.unair.ac.id"
+
+            // Dedicated Action Card: Buka di HEBAT e-Learning
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { openBrowser(context, primaryUrl) },
+                shape = RoundedCornerShape(10.dp),
+                color = ForfhColors.LinearIndigo.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, ForfhColors.LinearIndigo.copy(alpha = 0.35f)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(ForfhColors.LinearIndigo.copy(alpha = 0.20f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Buka HEBAT",
+                            tint = ForfhColors.LinearIndigo,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Buka Pengumpulan di HEBAT",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = ForfhColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = primaryUrl,
+                            style = ForfhTypeExtras.MonoMeta,
+                            color = ForfhColors.LinearIndigo,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = ForfhColors.LinearIndigo,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            // Description Card with Interactive Clickable URLs & Clean HTML
             ForfhSurface {
                 Column(
                     modifier = Modifier
@@ -190,13 +303,21 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                     Text(
                         text = "DESKRIPSI TUGAS",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = ForfhColors.TextMuted,
                     )
-                    Text(
-                        text = item.description ?: "Tidak ada deskripsi tambahan.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+
+                    if (rawDesc.isBlank()) {
+                        Text(
+                            text = "Tidak ada deskripsi tambahan.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ForfhColors.TextMuted,
+                        )
+                    } else {
+                        FormattedDescriptionText(
+                            rawText = rawDesc,
+                            onUrlClick = { url -> openBrowser(context, url) }
+                        )
+                    }
                 }
             }
 
@@ -216,7 +337,7 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                         Text(
                             text = "SUBTUGAS (${subtasks.count { it.completed == 1 }}/${subtasks.size})",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = ForfhColors.TextMuted,
                         )
                         subtasks.forEach { st ->
                             Row(
@@ -230,7 +351,15 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(
                                             if (st.completed == 1) ForfhColors.StatusSelesaiFg
-                                            else MaterialTheme.colorScheme.outlineVariant
+                                             else ForfhColors.SurfaceSecondary
+                                        )
+                                        .border(
+                                            BorderStroke(
+                                                1.dp,
+                                                if (st.completed == 1) ForfhColors.StatusSelesaiFg
+                                                else ForfhColors.BorderSubtle
+                                            ),
+                                            RoundedCornerShape(6.dp)
                                         ),
                                     contentAlignment = Alignment.Center,
                                 ) {
@@ -238,7 +367,7 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                                         Icon(
                                             imageVector = Icons.Filled.Check,
                                             contentDescription = "Selesai",
-                                            tint = MaterialTheme.colorScheme.surface,
+                                            tint = ForfhColors.PitchBlack,
                                             modifier = Modifier.size(14.dp),
                                         )
                                     }
@@ -246,7 +375,7 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                                 Text(
                                     text = st.title,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (st.completed == 1) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                                    color = if (st.completed == 1) ForfhColors.TextMuted else ForfhColors.TextPrimary,
                                     textDecoration = if (st.completed == 1) TextDecoration.LineThrough else null,
                                 )
                             }
@@ -259,8 +388,8 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                 Text(
                     text = msg,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (msg.startsWith("Gagal")) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.tertiary,
+                    color = if (msg.startsWith("Gagal")) ForfhColors.PriorityP1
+                    else ForfhColors.LinearIndigo,
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
@@ -268,4 +397,49 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+@Composable
+private fun FormattedDescriptionText(
+    rawText: String,
+    onUrlClick: (String) -> Unit
+) {
+    val cleanText = cleanHtmlText(rawText)
+    val annotatedString = buildAnnotatedString {
+        append(cleanText)
+        val matcher = URL_PATTERN.matcher(cleanText)
+        while (matcher.find()) {
+            val start = matcher.start()
+            val end = matcher.end()
+            val url = matcher.group()
+            addStyle(
+                style = SpanStyle(
+                    color = ForfhColors.LinearIndigo,
+                    textDecoration = TextDecoration.Underline,
+                    fontWeight = FontWeight.Medium
+                ),
+                start = start,
+                end = end
+            )
+            addStringAnnotation(
+                tag = "URL",
+                annotation = url,
+                start = start,
+                end = end
+            )
+        }
+    }
+
+    ClickableText(
+        text = annotatedString,
+        style = MaterialTheme.typography.bodyMedium.copy(
+            color = ForfhColors.TextSecondary
+        ),
+        onClick = { offset ->
+            annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                .firstOrNull()?.let { annotation ->
+                    onUrlClick(annotation.item)
+                }
+        }
+    )
 }
