@@ -187,6 +187,9 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                             }
                         }
                     } else {
+                        item {
+                            NotionCurrentTimeLine(nowMs = nowMs)
+                        }
                         items(state.today) { item ->
                             ScheduleRowCard(item)
                         }
@@ -423,6 +426,54 @@ private fun ScheduleRowCard(item: JadwalItem) {
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Penanda Waktu Real-Time mengikuti spec Notion Calendar (Red dot 8dp + Red line 2dp + Mono Time label).
+ */
+@Composable
+private fun NotionCurrentTimeLine(nowMs: Long) {
+    val zone = ZoneId.of("Asia/Jakarta")
+    val now = Instant.ofEpochMilli(nowMs).atZone(zone)
+    val timeStr = UiFormat.timeOf(now)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        // Red Marker Dot (8dp)
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(ForfhColors.NotionTimeIndicator)
+        )
+
+        // Red Indicator Line
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(2.dp)
+                .background(ForfhColors.NotionTimeIndicator)
+        )
+
+        // Monospaced Time Tag
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = ForfhColors.NotionTimeIndicator.copy(alpha = 0.15f),
+        ) {
+            Text(
+                text = "$timeStr WIB",
+                style = ForfhTypeExtras.MonoMeta,
+                color = ForfhColors.NotionTimeIndicator,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            )
         }
     }
 }
