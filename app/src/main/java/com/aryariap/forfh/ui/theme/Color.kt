@@ -96,6 +96,16 @@ object ForfhColors {
     val StatusGagalDarkBg = Color(0xFF3A1C1A)
     val StatusGagalDarkFg = Color(0xFFF2B8B5)
 
+    // Todoist Priority Colors (P1–P4)
+    val PriorityP1 = Color(0xFFDC4C3E)
+    val PriorityP2 = Color(0xFFE15E00)
+    val PriorityP3 = Color(0xFF246FE0)
+    val PriorityP4 = Color(0xFF71717A)
+
+    // Notion Calendar Time Indicator & Tints
+    val NotionTimeIndicator = Color(0xFFE25553)
+    val NotionEventTint = Color(0x265E6AD2)
+
     // Alias Kompatibilitas Legacy & Widget
     val Accent = Navy
     val AccentHover = NavyDark

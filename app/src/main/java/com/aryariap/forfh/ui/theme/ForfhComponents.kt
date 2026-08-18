@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -395,6 +396,97 @@ fun ForfhNavDock(
                 }
             }
             Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+        }
+    }
+}
+
+/**
+ * Filter Chip segmen horizontal ramping mengikuti spec Linear (30dp height, 8dp radius, active tint).
+ */
+@Composable
+fun LinearFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    count: Int? = null,
+) {
+    val bg = if (selected) Color(0xFF5E6AD2).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val border = if (selected) Color(0xFF5E6AD2).copy(alpha = 0.6f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+    val text = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(30.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = bg,
+        border = BorderStroke(1.dp, border),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = text,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            )
+            count?.let { c ->
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+                ) {
+                    Text(
+                        text = "$c",
+                        style = ForfhTypeExtras.MonoMeta,
+                        color = text,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Priority Pill (P1-P4) mengikuti spec Todoist & Linear.
+ */
+@Composable
+fun PriorityPill(
+    priority: String,
+    modifier: Modifier = Modifier,
+) {
+    val (label, color) = when (priority.lowercase()) {
+        "p1", "urgent", "tinggi" -> "P1" to ForfhColors.PriorityP1
+        "p2", "high", "sedang" -> "P2" to ForfhColors.PriorityP2
+        "p3", "medium", "normal" -> "P3" to ForfhColors.PriorityP3
+        else -> "P4" to ForfhColors.PriorityP4
+    }
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(6.dp),
+        color = color.copy(alpha = 0.15f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.3f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+            Text(
+                text = label,
+                style = ForfhTypeExtras.MonoMeta,
+                color = color,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
