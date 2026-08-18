@@ -151,7 +151,7 @@ private fun CompactTaskRow(task: TaskEntity) {
         modifier = GlanceModifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val dotColor = taskDotColor(task.courseColor)
+        val dotColor = taskPriorityColor(task.priority)
         Box(
             modifier = GlanceModifier
                 .size(6.dp)
@@ -170,10 +170,10 @@ private fun CompactTaskRow(task: TaskEntity) {
         Spacer(GlanceModifier.defaultWeight())
         task.dueAt?.let { dueAt ->
             Text(
-                text = UiFormat.timeOf(dueAt, WIB),
+                text = formatWidgetDeadline(dueAt),
                 style = TextStyle(
                     fontSize = 11.sp,
-                    color = GlanceTheme.colors.onSurfaceVariant,
+                    color = ColorProvider(ForfhColors.TextMuted),
                 ),
                 maxLines = 1,
             )
@@ -192,36 +192,53 @@ private fun TasksWidgetStandardContent(data: TasksWidgetData) {
         verticalAlignment = Alignment.Top,
         horizontalAlignment = Alignment.Start,
     ) {
-        Text(
-            text = "TUGAS TERDEKAT",
-            style = TextStyle(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = GlanceTheme.colors.primary,
-            ),
-            maxLines = 1,
-        )
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "DEADLINE TUGAS",
+                style = TextStyle(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ColorProvider(ForfhColors.PriorityP2),
+                ),
+                maxLines = 1,
+            )
+            Spacer(GlanceModifier.defaultWeight())
+            if (data.tasks.isNotEmpty()) {
+                Text(
+                    text = "${data.tasks.size} tugas aktif",
+                    style = TextStyle(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ColorProvider(ForfhColors.TextMuted),
+                    ),
+                    maxLines = 1,
+                )
+            }
+        }
         Spacer(GlanceModifier.height(6.dp))
         if (data.tasks.isEmpty()) {
             Text(
-                text = "Tidak ada tugas aktif",
+                text = "Semua tugas selesai 🎉",
                 style = TextStyle(
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     color = GlanceTheme.colors.onSurfaceVariant,
                 ),
             )
         } else {
             data.tasks.take(3).forEach { task ->
                 StandardTaskRow(task)
-                Spacer(GlanceModifier.height(5.dp))
+                Spacer(GlanceModifier.height(4.dp))
             }
         }
         Spacer(GlanceModifier.defaultWeight())
         Text(
             text = syncStatusLine(data.lastSyncAt, data.lastSyncStatus, System.currentTimeMillis()),
             style = TextStyle(
-                fontSize = 11.sp,
-                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = 10.sp,
+                color = ColorProvider(ForfhColors.TextMuted),
             ),
             maxLines = 1,
         )
@@ -234,17 +251,17 @@ private fun StandardTaskRow(task: TaskEntity) {
         modifier = GlanceModifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val dotColor = taskDotColor(task.courseColor)
+        val priorityColor = taskPriorityColor(task.priority)
         Box(
             modifier = GlanceModifier
-                .size(8.dp)
-                .background(dotColor),
+                .size(7.dp)
+                .background(priorityColor),
         ) {}
-        Spacer(GlanceModifier.width(8.dp))
+        Spacer(GlanceModifier.width(7.dp))
         Text(
             text = task.title,
             style = TextStyle(
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = GlanceTheme.colors.onSurface,
             ),
@@ -253,10 +270,10 @@ private fun StandardTaskRow(task: TaskEntity) {
         Spacer(GlanceModifier.defaultWeight())
         task.dueAt?.let { dueAt ->
             Text(
-                text = UiFormat.timeOf(dueAt, WIB),
+                text = formatWidgetDeadline(dueAt),
                 style = TextStyle(
-                    fontSize = 12.sp,
-                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    color = ColorProvider(ForfhColors.TextMuted),
                 ),
                 maxLines = 1,
             )
@@ -264,9 +281,28 @@ private fun StandardTaskRow(task: TaskEntity) {
     }
 }
 
+private fun formatWidgetDeadline(epochMs: Long): String {
+    val zdt = java.time.Instant.ofEpochMilli(epochMs).atZone(WIB)
+    val today = java.time.LocalDate.now(WIB)
+    val taskDate = zdt.toLocalDate()
+    val timeStr = UiFormat.timeOf(zdt)
+    return when {
+        taskDate == today -> "Hari ini $timeStr"
+        taskDate == today.plusDays(1) -> "Besok $timeStr"
+        taskDate.year == today.year -> "${taskDate.dayOfMonth} ${UiFormat.shortDateIndonesian(taskDate).split(" ").getOrNull(1) ?: ""} $timeStr"
+        else -> "${taskDate.dayOfMonth}/${taskDate.monthValue} $timeStr"
+    }
+}
+
+private fun taskPriorityColor(priority: String?): ColorProvider = when (priority?.lowercase()) {
+    "urgent", "p1", "1" -> ColorProvider(ForfhColors.PriorityP1)
+    "high", "p2", "2" -> ColorProvider(ForfhColors.PriorityP2)
+    "medium", "p3", "3" -> ColorProvider(ForfhColors.PriorityP3)
+    else -> ColorProvider(ForfhColors.PriorityP4)
+}
+
 /**
  * Warna dot course hex "RRGGBB" -> ColorProvider; fallback accent DNA ForFH.
- * Pola sama persis dengan widgetCourseColor() di ForfhWidget.kt.
  */
 private fun taskDotColor(hex: String?): ColorProvider =
     runCatching {

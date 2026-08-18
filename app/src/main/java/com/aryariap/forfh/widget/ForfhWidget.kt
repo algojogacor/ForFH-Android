@@ -222,9 +222,6 @@ private fun StandardContent(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(GlanceTheme.colors.widgetBackground)
-            // clickable SEBELUM padding: seluruh footprint widget (termasuk tepi) dapat di-tap,
-            // bukan hanya area dalam padding: kontras teks baru sah karena ada permukaan nyata
-            // (widgetBackground = background skema app, light #FAF9F7 / dark gelap, R-25).
             .clickable(actionStartActivity<MainActivity>(parameters = actionParametersOf(ActionParameters.Key<Int>("open_tab").to(0))))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -252,14 +249,23 @@ private fun StandardContent(
                     style = TextStyle(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = GlanceTheme.colors.primary,
+                        color = ColorProvider(ForfhColors.LinearIndigo),
                     ),
                     maxLines = 1,
                 )
                 Spacer(GlanceModifier.defaultWeight())
+                val rightHeader = if (nextClass != null) {
+                    UiFormat.countdownTo(now, nextClass.second)
+                } else {
+                    widgetDate(now)
+                }
                 Text(
-                    text = widgetDate(now),
-                    style = TextStyle(fontSize = 11.sp, color = GlanceTheme.colors.onSurfaceVariant),
+                    text = rightHeader,
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ColorProvider(ForfhColors.TextMuted),
+                    ),
                     maxLines = 1,
                 )
             }
@@ -276,7 +282,7 @@ private fun StandardContent(
                 )
             } else {
                 Text(
-                    text = "Belum ada data",
+                    text = "Tidak ada kuliah lagi",
                     style = TextStyle(
                         fontSize = 14.sp,
                         color = GlanceTheme.colors.onSurfaceVariant,
@@ -295,11 +301,11 @@ private fun StandardContent(
                 }
             }
             if (meta.isNotEmpty()) {
-                Spacer(GlanceModifier.height(2.dp))
+                Spacer(GlanceModifier.height(3.dp))
                 Text(
                     text = meta,
                     style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant),
-                    maxLines = 1, // format tetap satu baris
+                    maxLines = 1,
                 )
             }
         }
