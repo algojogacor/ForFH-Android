@@ -193,10 +193,11 @@ private fun TasksWidgetStandardContent(data: TasksWidgetData) {
         horizontalAlignment = Alignment.Start,
     ) {
         Text(
-            text = "Tugas terdekat",
+            text = "TUGAS TERDEKAT",
             style = TextStyle(
-                fontSize = 12.sp,
-                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = GlanceTheme.colors.primary,
             ),
             maxLines = 1,
         )

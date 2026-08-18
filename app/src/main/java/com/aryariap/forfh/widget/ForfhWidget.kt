@@ -248,14 +248,18 @@ private fun StandardContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Berikutnya",
-                    style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant),
+                    text = "KULIAH BERIKUTNYA",
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GlanceTheme.colors.primary,
+                    ),
                     maxLines = 1,
                 )
                 Spacer(GlanceModifier.defaultWeight())
                 Text(
                     text = widgetDate(now),
-                    style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant),
+                    style = TextStyle(fontSize = 11.sp, color = GlanceTheme.colors.onSurfaceVariant),
                     maxLines = 1,
                 )
             }
@@ -266,7 +270,7 @@ private fun StandardContent(
                     text = name,
                     style = TextStyle(
                         fontSize = standardNameFontSize(name.length),
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Bold,
                         color = GlanceTheme.colors.onSurface,
                     ),
                 )
@@ -280,7 +284,10 @@ private fun StandardContent(
                 )
             }
             val meta = buildString {
-                nextClass?.let { append(UiFormat.timeOf(it.second)) }
+                nextClass?.let {
+                    append(UiFormat.timeOf(it.second))
+                    it.first.room?.let { room -> append(" · R. $room") }
+                }
                 if (nextAlarm != null) {
                     if (nextClass != null) append(" · ")
                     append("Alarm: ")
@@ -291,8 +298,8 @@ private fun StandardContent(
                 Spacer(GlanceModifier.height(2.dp))
                 Text(
                     text = meta,
-                    style = TextStyle(fontSize = 13.sp, color = GlanceTheme.colors.onSurfaceVariant),
-                    maxLines = 1, // "HH:mm" / "HH:mm · Alarm: HH:mm" format tetap
+                    style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant),
+                    maxLines = 1, // format tetap satu baris
                 )
             }
         }
