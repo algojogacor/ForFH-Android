@@ -12,13 +12,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,52 +31,58 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.aryariap.forfh.ui.theme.ForfhColors
+import com.aryariap.forfh.ui.theme.ForfhSectionLabel
+import com.aryariap.forfh.ui.theme.ForfhSurface
+import com.aryariap.forfh.ui.theme.ForfhTopBar
+import com.aryariap.forfh.ui.theme.ForfhTypeExtras
+import com.aryariap.forfh.ui.theme.PresensiRing
+import com.aryariap.forfh.ui.theme.PrimaryButton
 
-/**
- * Layar Info (V1.1 Task 8+9): rekap presensi per MK (hadir/tm/persen — web tidak punya
- * izin/sakit/alpa, ruling R22) + kartu info kampus per jenis (section header Indonesia +
- * kartu berdesain per jenis: identitas, daftar MK, HER, pembayaran, dst. — bukan dump
- * mentah). Semua angka dari Room (R-17); state jujur per R-27:
- *
- * - QUEUED (worker menunggu jaringan) → banner kecil, BUKAN spinner layar penuh yang bisa
- *   tampil tanpa batas; state di bawahnya (kosong/putus/error/konten) tetap terlihat
- *   lengkap dengan aksinya (fix review).
- * - RUNNING tanpa data → spinner layar penuh "Menyinkronkan data..."; dengan data →
- *   konten tetap tampil (Room flow meng-update otomatis saat selesai).
- * - Putus (connected=false) lebih fundamental daripada error transient: retry sync tidak
- *   memperbaiki akun yang tidak terhubung — tunjukkan penyebab + aksinya.
- * - Frame pertama (Room belum ter-emisi) → indikator "Memuat data...", bukan asumsi state
- *   terminal (fix review: guard loaded).
- *
- * Tiap state penuh punya TEPAT SATU tombol aksi (R-26); tidak ada state tanpa jalan keluar.
- */
 @Composable
 fun InfoScreen(viewModel: InfoViewModel) {
     val state by viewModel.state.collectAsState()
     val hasData = state.presensi.isNotEmpty() || state.cards.isNotEmpty()
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
-            Text(
-                text = "Info",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            ForfhTopBar(
+                title = "Info",
+                eyebrow = "INFORMASI AKADEMIK",
+                trailing = {
+                    IconButton(onClick = viewModel::syncNow) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Sinkronkan",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
             )
         },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Worker menunggu jaringan (ENQUEUED): banner kecil non-blocking — state utama
-            // di bawahnya tetap terlihat, tidak ada spinner tanpa batas.
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
             if (state.syncActivity == SyncActivity.QUEUED) {
                 QueuedBanner()
             }
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     !state.loaded -> FullState {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(12.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            strokeWidth = 3.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.height(14.dp))
                         Text(
                             text = "Memuat data...",
                             style = MaterialTheme.typography.bodyMedium,
@@ -82,8 +91,12 @@ fun InfoScreen(viewModel: InfoViewModel) {
                     }
 
                     state.syncActivity == SyncActivity.RUNNING && !hasData -> FullState {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(12.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            strokeWidth = 3.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.height(14.dp))
                         Text(
                             text = "Menyinkronkan data...",
                             style = MaterialTheme.typography.bodyMedium,
@@ -92,48 +105,99 @@ fun InfoScreen(viewModel: InfoViewModel) {
                     }
 
                     state.connected == false -> FullState {
-                        Text(
-                            text = "Kampus belum terhubung.",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "Akun Kampus Kita belum terhubung di ForFH web. Hubungkan di web, lalu sinkronkan lagi.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        state.kampusLastSyncAt?.let { iso ->
-                            InfoFormat.formatUpdatedAt(iso)?.let { last ->
-                                Spacer(Modifier.height(4.dp))
+                        ForfhSurface {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 Text(
-                                    text = "Terakhir sinkron kampus: $last",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = "Kampus Belum Terhubung",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = "Akun Kampus Kita belum terhubung di ForFH web. Hubungkan di web, lalu sinkronkan lagi.",
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                state.kampusLastSyncAt?.let { iso ->
+                                    InfoFormat.formatUpdatedAt(iso)?.let { last ->
+                                        Text(
+                                            text = "Terakhir sinkron kampus: $last",
+                                            style = ForfhTypeExtras.MonoMeta,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                PrimaryButton(
+                                    text = "Sinkronkan",
+                                    onClick = viewModel::syncNow,
+                                    height = 46.dp,
                                 )
                             }
                         }
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = viewModel::syncNow) { Text("Sinkronkan") }
                     }
 
                     state.error && !hasData -> FullState {
-                        Text(
-                            text = "Sinkronisasi gagal. Cek koneksi, lalu coba lagi.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = viewModel::syncNow) { Text("Coba lagi") }
+                        ForfhSurface {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = "Sinkronisasi Gagal",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                Text(
+                                    text = "Periksa koneksi internet lalu coba lagi.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                PrimaryButton(
+                                    text = "Coba Lagi",
+                                    onClick = viewModel::syncNow,
+                                    height = 46.dp,
+                                )
+                            }
+                        }
                     }
 
                     !hasData -> FullState {
-                        Text(
-                            text = "Belum ada data. Sinkronkan dulu.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = viewModel::syncNow) { Text("Sinkronkan") }
+                        ForfhSurface {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = "Belum Ada Data",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = "Sinkronkan untuk memuat data akademik kampus.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                PrimaryButton(
+                                    text = "Sinkronkan",
+                                    onClick = viewModel::syncNow,
+                                    height = 46.dp,
+                                )
+                            }
+                        }
                     }
 
                     else -> InfoContent(state = state, onSync = viewModel::syncNow)
@@ -143,32 +207,30 @@ fun InfoScreen(viewModel: InfoViewModel) {
     }
 }
 
-/** Banner kecil: worker sync menunggu jaringan — jujur, bukan klaim "sedang sinkron". */
 @Composable
 private fun QueuedBanner() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-        Spacer(Modifier.width(10.dp))
         Text(
             text = "Menunggu jaringan untuk sinkron...",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f), // melipat, bukan overflow, di layar sempit (R-03)
+            modifier = Modifier.weight(1f),
         )
     }
 }
 
-/** Wrapper state penuh (loading/error/putus/kosong): konten di tengah layar. */
 @Composable
-private fun FullState(
-    content: @Composable () -> Unit,
-) {
+private fun FullState(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -184,13 +246,15 @@ private fun FullState(
 private fun InfoContent(state: InfoUiState, onSync: () -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Sync gagal dengan data lama: data tetap tampil + baris error yang actionable.
         if (state.error) {
             item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
                         text = "Sinkronisasi gagal.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -203,58 +267,43 @@ private fun InfoContent(state: InfoUiState, onSync: () -> Unit) {
         }
 
         if (state.presensi.isNotEmpty()) {
-            item { SectionHeader("Rekap presensi") }
-            items(state.presensi) { row -> PresensiCard(row) }
+            item {
+                ForfhSectionLabel("Presensi Semester Ini")
+            }
+            items(state.presensi) { row ->
+                PresensiCard(row)
+            }
         }
 
-        // Satu section header per jenis (keluhan user: dump mentah tanpa judul section) —
-        // judul Indonesia per jenis, kartu berdesain per jenis di bawahnya.
         if (state.cards.isNotEmpty()) {
             items(state.cards, key = { it.jenis }) { card ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SectionHeader(card.title)
+                    ForfhSectionLabel(card.title)
                     InfoKampusCard(card)
                 }
             }
         }
 
-        // Footer umur data kampus (meta.lastSyncAt) — bukan waktu sync jadwal/tugas, dan
-        // tanpa em dash (fix review; UiFormat.syncInfo dibiarkan untuk layar lain).
         item {
             Text(
                 text = InfoFormat.kampusUpdatedText(state.kampusLastSyncAt),
-                style = MaterialTheme.typography.bodyMedium,
+                style = ForfhTypeExtras.MonoMeta,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
             )
         }
     }
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 8.dp),
-    )
-}
-
-/**
- * Kartu rekap presensi per MK: kode (mono, primary) + nama + baris hadir, dengan persen
- * sebagai angka inti di kanan (R-17: dari Room; hanya saat server mengirimnya). Variasi
- * dari kartu info kampus (R-14): satu angka focal di kanan, bukan kolom label:nilai.
- */
-@Composable
 private fun PresensiCard(row: PresensiRow) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    ForfhSurface {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(
                 modifier = Modifier.weight(1f),
@@ -262,32 +311,25 @@ private fun PresensiCard(row: PresensiRow) {
             ) {
                 Text(
                     text = row.kode,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    style = ForfhTypeExtras.MonoMeta,
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = row.nama,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = InfoFormat.formatPresensi(row.tm, row.hadir, row.persen),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (row.persen != null) {
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = "${row.persen}%",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+            row.persen?.let {
+                PresensiRing(percentage = it)
             }
         }
     }
 }
-
-// Kartu info kampus per jenis (kartu identitas, daftar MK, HER, dst.) pindah ke
-// InfoCardViews.kt — InfoKampusCard dipakai dari sana.

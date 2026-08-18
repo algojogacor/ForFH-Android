@@ -11,18 +11,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,35 +33,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.aryariap.forfh.BuildConfig
 import com.aryariap.forfh.debug.AppLog
+import com.aryariap.forfh.ui.theme.ForfhSurface
+import com.aryariap.forfh.ui.theme.ForfhTypeExtras
+import com.aryariap.forfh.ui.theme.OutlineButton
+import com.aryariap.forfh.ui.theme.PrimaryButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Jumlah baris terakhir yang ditampilkan (arsip + aktif, urutan kronologis). */
 private const val MAX_LOG_LINES = 200
 
-/**
- * Layar Log aplikasi: baris log terakhir + tombol "Bagikan log" (ACTION_SEND via
- * FileProvider, filesDir/logs) dan "Hapus log". Pola InfoScreen: Scaffold dengan
- * judul titleLarge (bukan TopAppBar — konsisten dengan layar lain), state jujur:
- * loading ("Memuat log..."), kosong (penyebab + kapan terisi), konten.
- *
- * Teks log memakai FontFamily.Monospace: baris log berbentuk tabel (waktu | level |
- * tag | pesan) dan monospace menjaga kolom sejajar untuk dipindai cepat — suara
- * tipografi yang sudah dipakai app (labelLarge di Type.kt), bukan sekadar gaya.
- */
 @Composable
 fun LogScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var lines by remember { mutableStateOf<List<String>?>(null) }
     var refresh by remember { mutableIntStateOf(0) }
 
-    // Baca file di Dispatchers.IO — baca I/O tidak pernah di main thread.
     LaunchedEffect(refresh) {
         lines = withContext(Dispatchers.IO) { AppLog.readRecent(MAX_LOG_LINES) }
     }
@@ -71,33 +60,50 @@ fun LogScreen(onBack: () -> Unit) {
     val hasLog = remember(lines) { lines?.isNotEmpty() == true }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 4.dp, end = 20.dp, top = 4.dp, bottom = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Kembali",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
-                Text("Log aplikasi", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = "Log Aplikasi",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
         },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Button(
+                PrimaryButton(
+                    text = "Bagikan Log",
                     onClick = { shareLog(context) },
                     enabled = hasLog,
                     modifier = Modifier.weight(1f),
-                ) { Text("Bagikan log") }
-                OutlinedButton(
+                    height = 44.dp,
+                )
+                OutlineButton(
+                    text = "Hapus Log",
                     onClick = {
                         AppLog.clear()
                         AppLog.info("LogScreen", "log dihapus oleh user")
@@ -105,31 +111,38 @@ fun LogScreen(onBack: () -> Unit) {
                     },
                     enabled = hasLog,
                     modifier = Modifier.weight(1f),
-                ) { Text("Hapus log") }
+                    height = 44.dp,
+                )
             }
-            Spacer(Modifier.height(12.dp))
+
             Box(modifier = Modifier.fillMaxSize()) {
                 val current = lines
                 when {
                     current == null -> CenteredHint {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                         Spacer(Modifier.height(12.dp))
-                        Text("Memuat log...", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "Memuat log...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                     current.isEmpty() -> CenteredHint {
                         Text(
-                            "Belum ada log. Alarm, sinkronisasi, dan notifikasi akan tercatat di sini otomatis.",
+                            text = "Belum ada log. Alarm, sinkronisasi, dan notifikasi akan tercatat otomatis di sini.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
                         )
                     }
-                    else -> Card(modifier = Modifier.fillMaxSize()) {
-                        // Teks dipilih → user bisa menyalin baris tertentu tanpa bagikan file.
+                    else -> ForfhSurface(modifier = Modifier.fillMaxSize()) {
                         SelectionContainer {
                             Text(
                                 text = current.joinToString("\n"),
-                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                style = ForfhTypeExtras.MonoLog,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .verticalScroll(rememberScrollState())
@@ -148,7 +161,7 @@ private fun CenteredHint(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp),
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -156,7 +169,6 @@ private fun CenteredHint(content: @Composable () -> Unit) {
     }
 }
 
-/** Bagikan file log aktif via ACTION_SEND (FileProvider). Kegagalan hanya di-log. */
 private fun shareLog(context: Context) {
     val file = AppLog.activeFile() ?: return
     if (!file.exists() || file.length() == 0L) return

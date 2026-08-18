@@ -134,6 +134,7 @@ class AlarmReschedulerTest {
         schedulesDao: FakeSchedulesDao,
         api: FakeAlarmApi,
         tasksDao: FakeTasksDao = FakeTasksDao(emptyList()),
+        clock: () -> ZonedDateTime = { wib("2026-08-17T10:00") },
         onAlarmsChanged: suspend () -> Unit = {},
     ) = AlarmRescheduler(
         planner = planner,
@@ -142,6 +143,7 @@ class AlarmReschedulerTest {
         schedulesDao = schedulesDao,
         prefs = testPrefs(),
         tasksDao = tasksDao,
+        clock = clock,
         onAlarmsChanged = onAlarmsChanged,
     )
 

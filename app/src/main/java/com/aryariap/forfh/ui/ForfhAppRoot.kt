@@ -2,26 +2,14 @@ package com.aryariap.forfh.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -41,6 +29,7 @@ import com.aryariap.forfh.ui.login.LoginScreen
 import com.aryariap.forfh.ui.login.LoginViewModel
 import com.aryariap.forfh.ui.pengaturan.PengaturanScreen
 import com.aryariap.forfh.ui.pengaturan.PengaturanViewModel
+import com.aryariap.forfh.ui.theme.ForfhNavDock
 import com.aryariap.forfh.ui.tugas.TugasListScreen
 import com.aryariap.forfh.ui.tugas.TugasViewModel
 
@@ -61,30 +50,18 @@ fun <T : ViewModel> simpleFactory(create: () -> T): ViewModelProvider.Factory =
 fun ForfhAppRoot(container: AppContainer, startTab: Int?) {
     val navController = rememberNavController()
 
-    // Jalur awal: cek cookie sesi (terenkripsi di Keystore) : splash sesaat lalu login/main
     LaunchedEffect(Unit) {
         val loggedIn = container.sessionManager.isLoggedIn()
         navController.navigate(if (loggedIn) Routes.MAIN else Routes.LOGIN) { popUpTo(0) }
     }
 
-    // Auto-logout (401) & login sukses → pindah halaman (spec §10).
-    // 401 (cleanupDone=false) → jalankan container.logout: wipe §8.10 penuh (cancel alarm, hapus
-    // Room + DataStore + cookie) TEPAT SEKALI per kejadian; logout eksplisit sudah di-wipe oleh
-    // container.logout sendiri (cleanupDone=true) : tidak dua kali (fix round final review).
     LaunchedEffect(Unit) {
         container.sessionManager.events.collect { ev ->
             when (ev) {
                 SessionEvent.LoggedIn ->
                     navController.navigate(Routes.MAIN) { popUpTo(0) { inclusive = true } }
                 is SessionEvent.LoggedOut -> {
-                    // 401 (cleanupDone=false) → cleanup §8.10 penuh; logout eksplisit sudah di-wipe oleh
-                    // container.logout() sendiri. Wipe TEPAT sekali per kejadian (spec §10).
                     if (!ev.cleanupDone) container.logout(ev.message)
-                    // Navigasi idempotent (fix round 2): container.logout meng-emit LoggedOut KEDUA
-                    // (cleanupDone=true) setelah wipe selesai : tanpa guard, event kedua ini me-navigate
-                    // ulang popUpTo(0) inclusive → entry LOGIN + ViewModel penampil pesan §10 dihancurkan
-                    // → pesan "Sesi berakhir, masuk lagi." hilang. Skip bila destination sudah LOGIN;
-                    // kasus 401 saat user sudah di LOGIN (sync background) juga aman tanpa re-navigasi.
                     if (navController.currentDestination?.route != Routes.LOGIN) {
                         navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
                     }
@@ -109,10 +86,6 @@ fun ForfhAppRoot(container: AppContainer, startTab: Int?) {
 private fun MainScaffold(container: AppContainer, startTab: Int?) {
     var tab by rememberSaveable { mutableIntStateOf(startTab ?: 0) }
 
-    // REQ-19: startTab harus menang atas rememberSaveable saat saved-state restore
-    // (proses dibunuh di background → onCreate dengan savedInstanceState → tab restore,
-    // misal Jadwal=0, menutupi startTab=1). Sekali per launch: startTab konstan,
-    // tidak menimpa pilihan tab user berikutnya. Nilai di luar 0..3 diabaikan (di-clamp).
     LaunchedEffect(startTab) {
         startTab?.let { if (it in 0..3) tab = it }
     }
@@ -126,27 +99,12 @@ private fun MainScaffold(container: AppContainer, startTab: Int?) {
     val infoVm: InfoViewModel = viewModel(factory = simpleFactory { InfoViewModel(containerApp) })
     val pengaturanVm: PengaturanViewModel = viewModel(factory = simpleFactory { PengaturanViewModel(containerApp) })
 
-    // Tab ke-4 "Info" (V1.1 Task 8): ikon Info (lingkaran "i") relevan dengan isi layar :
-    // info kampus & kehadiran; ikon hanya penanda tab, label di bawahnya yang menjelaskan.
-    val tabs: List<Triple<String, ImageVector, @Composable () -> Unit>> = listOf(
-        Triple("Jadwal", Icons.Filled.DateRange as ImageVector) { JadwalScreen(jadwalVm, nextUpVm) },
-        Triple("Tugas", Icons.AutoMirrored.Filled.List) { TugasListScreen(tugasVm) },
-        Triple("Info", Icons.Filled.Info) { InfoScreen(infoVm) },
-        Triple("Atur", Icons.Filled.Settings) { PengaturanScreen(pengaturanVm) },
-    )
-
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                tabs.forEachIndexed { i, (label, icon, _) ->
-                    NavigationBarItem(
-                        selected = tab == i,
-                        onClick = { tab = i },
-                        icon = { Icon(icon, contentDescription = label) },
-                        label = { Text(label) },
-                    )
-                }
-            }
+            ForfhNavDock(
+                selectedIndex = tab,
+                onSelect = { tab = it },
+            )
         },
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {

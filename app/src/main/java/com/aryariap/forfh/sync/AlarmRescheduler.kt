@@ -23,6 +23,7 @@ class AlarmRescheduler(
     private val prefs: Preferences,
     /** Task 6: kandidat notifikasi deadline H-1 (TaskDeadlinePlanner lewat ReconcilePlanner). */
     private val tasksDao: TasksDao,
+    private val clock: () -> ZonedDateTime = { ZonedDateTime.now(ZoneId.of("Asia/Jakarta")) },
     /** Task 4: dipanggil setelah execute() selesai (refresh widget; default no-op agar test lama utuh). */
     private val onAlarmsChanged: suspend () -> Unit = {},
 ) : RescheduleAll {
@@ -78,7 +79,7 @@ class AlarmRescheduler(
     }
 
     private suspend fun compute(fullRebuild: Boolean): List<AlarmOp> {
-        val now = ZonedDateTime.now(zone)
+        val now = clock()
         // Kandidat deadline H-1: dueAt dalam [hari ini 00:00 WIB, lusa 00:00 WIB) — mencakup
         // deadline hari ini DAN besok secara penuh (half-open, kontrak TasksDao.getDueTasksOnce).
         // Planner murni yang memutuskan H-1; query hanya mempersempit kandidat.

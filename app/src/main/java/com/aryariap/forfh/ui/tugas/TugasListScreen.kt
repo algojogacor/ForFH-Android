@@ -5,18 +5,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -27,13 +31,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.info.SyncActivity
+import com.aryariap.forfh.ui.theme.ForfhAccentDot
 import com.aryariap.forfh.ui.theme.ForfhColors
+import com.aryariap.forfh.ui.theme.ForfhStatusPill
+import com.aryariap.forfh.ui.theme.ForfhSurface
+import com.aryariap.forfh.ui.theme.ForfhTopBar
+import com.aryariap.forfh.ui.theme.ForfhTypeExtras
+import com.aryariap.forfh.ui.theme.PrimaryButton
 import java.time.ZoneId
 import kotlinx.coroutines.delay
 
@@ -42,9 +54,6 @@ fun TugasListScreen(viewModel: TugasViewModel) {
     val state by viewModel.state.collectAsState()
     val zone = ZoneId.of("Asia/Jakarta")
 
-    // Pesan aksi sekali-pakai (error markDone; sukses TANPA pesan, chip status sudah jadi
-    // "Selesai"). Banner Text sederhana (stub Task 10: "di-V1 pakai Text banner sederhana"),
-    // auto-clear 5 detik setelah tampil, hanya di list (detail punya tampilan pesan sendiri).
     LaunchedEffect(state.message) {
         if (state.message != null && state.detail == null) {
             delay(5_000)
@@ -58,88 +67,86 @@ fun TugasListScreen(viewModel: TugasViewModel) {
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
-            Text(
-                text = "Tugas",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            ForfhTopBar(
+                title = "Tugas",
+                eyebrow = "${state.items.size} TUGAS AKTIF",
+                trailing = {
+                    IconButton(onClick = viewModel::syncNow) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Sinkronkan",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
             )
         },
     ) { padding ->
-        // Pull-to-refresh: tarik → sync satu-kali (Task 11). Indikator hanya saat worker
-        // benar-benar RUNNING; QUEUED (menunggu jaringan) tidak memutar spinner tanpa batas
-        // (semantik yang sama dengan layar Info).
         PullToRefreshBox(
             isRefreshing = state.syncActivity == SyncActivity.RUNNING,
             onRefresh = viewModel::syncNow,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
         ) {
             Column(Modifier.fillMaxSize()) {
-                if (state.message != null) {
-                    MessageBanner(state.message!!)
+                state.message?.let {
+                    MessageBanner(it)
                 }
+
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     if (state.items.isEmpty()) {
                         item {
-                            Text(
-                                text = "Belum ada tugas. Tarik untuk sinkronkan.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    items(state.items) { item ->
-                        Card(
-                            onClick = { viewModel.openDetail(item.id) },
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                val dot = runCatching { Color(android.graphics.Color.parseColor(item.courseColor ?: "#3b82f6")) }
-                                    .getOrDefault(ForfhColors.Accent)
-                                Box(
+                            ForfhSurface {
+                                Column(
                                     modifier = Modifier
-                                        .width(8.dp)
-                                        .height(8.dp)
-                                        .background(dot, RoundedCornerShape(4.dp)),
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
+                                        .fillMaxWidth()
+                                        .padding(28.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
                                     Text(
-                                        text = item.title,
+                                        text = "Belum Ada Tugas",
                                         style = MaterialTheme.typography.titleMedium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textDecoration = if (item.status == "DONE") TextDecoration.LineThrough else null,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                     )
                                     Text(
-                                        text = buildString {
-                                            item.courseName?.let { append(it) }
-                                            item.dueAt?.let { due ->
-                                                if (isNotEmpty()) append(" · ")
-                                                append("Deadline ${UiFormat.deadline(due, zone)}")
-                                            }
-                                        }.ifEmpty { "Tanpa deadline" },
+                                        text = "Semua tugas telah diselesaikan atau belum termuat.",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                    Spacer(Modifier.height(4.dp))
+                                    PrimaryButton(
+                                        text = "Sinkronkan Sekarang",
+                                        onClick = viewModel::syncNow,
+                                        height = 46.dp,
+                                    )
                                 }
-                                Spacer(Modifier.width(12.dp))
-                                StatusChip(item, onRetry = { viewModel.markDone(item.id) })
                             }
                         }
                     }
-                    // Footer sync (pola JadwalScreen): affordance refresh yang jujur.
+
+                    items(state.items) { item ->
+                        TaskRowCard(
+                            item = item,
+                            zone = zone,
+                            onClick = { viewModel.openDetail(item.id) },
+                            onRetry = { viewModel.markDone(item.id) },
+                        )
+                    }
+
                     item {
                         Text(
                             text = "Terakhir sinkron: ${UiFormat.syncInfo(state.lastSyncStatus, state.lastSyncAt)}",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = ForfhTypeExtras.MonoMeta,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp),
+                            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                         )
                     }
                 }
@@ -148,63 +155,101 @@ fun TugasListScreen(viewModel: TugasViewModel) {
     }
 }
 
-/**
- * Banner pesan aksi sekali-pakai. Saat ini hanya pesan gagal markDone yang tersisa (sukses
- * tanpa banner, chip status sudah jadi "Selesai"), jadi selalu memakai permukaan error M3
- * (errorContainer/onErrorContainer): kontras AA built-in, tidak menambah warna baru (R-25,
- * R-29). Auto-clear 5 detik di LaunchedEffect pemanggil.
- */
 @Composable
 private fun MessageBanner(text: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp))
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 18.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.weight(1f), // membungkus, tidak overflow (R-03)
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f),
         )
     }
 }
 
-/**
- * Chip status kartu tugas. Untuk tugas DONE, Task 10 menambah indikator sinkronisasi:
- * PENDING = "Mengirim…" (PUT belum konfirmasi), FAILED = "Gagal · Ketuk untuk kirim ulang"
- * (bisa diketuk — kirim ulang PUT; clickable di dalam Card(onClick) menang atas tap, tidak
- * membuka detail), SYNCED = "Selesai" seperti biasa (server sudah konfirmasi — tanpa chip
- * tambahan, sesuai "sukses: SYNCED tanpa sentuh UI lagi").
- */
 @Composable
-private fun StatusChip(item: TugasItem, onRetry: () -> Unit) {
+private fun TaskRowCard(
+    item: TugasItem,
+    zone: ZoneId,
+    onClick: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    val dotColor = runCatching { Color(android.graphics.Color.parseColor(item.courseColor ?: "#14325B")) }
+        .getOrDefault(ForfhColors.Navy)
+
+    ForfhSurface(
+        accent = dotColor,
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                item.courseName?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (item.status == "DONE") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textDecoration = if (item.status == "DONE") TextDecoration.LineThrough else null,
+                )
+
+                Text(
+                    text = item.dueAt?.let { "Deadline ${UiFormat.deadline(it, zone)}" } ?: "Tanpa deadline",
+                    style = ForfhTypeExtras.MonoMeta,
+                    color = if (item.computedStatus == "OVERDUE" && item.status != "DONE") MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            TaskStatusPill(item = item, onRetry = onRetry)
+        }
+    }
+}
+
+@Composable
+private fun TaskStatusPill(item: TugasItem, onRetry: () -> Unit) {
     val syncState = com.aryariap.forfh.data.db.TaskEntity.SyncState
     val (label, bg, fg) = when {
         item.status == "DONE" && item.syncState == syncState.PENDING ->
-            Triple("Mengirim…", ForfhColors.Warning, Color.White)
+            Triple("Mengirim...", ForfhColors.StatusMengirimBg, ForfhColors.StatusMengirimFg)
         item.status == "DONE" && item.syncState == syncState.FAILED ->
-            Triple("Gagal · Ketuk untuk kirim ulang", ForfhColors.Danger, Color.White)
-        item.status == "DONE" -> Triple("Selesai", ForfhColors.Success, Color.White)
+            Triple("Gagal · Kirim ulang", ForfhColors.StatusGagalBg, ForfhColors.StatusGagalFg)
+        item.status == "DONE" -> Triple("Selesai", ForfhColors.StatusSelesaiBg, ForfhColors.StatusSelesaiFg)
         item.computedStatus == "OVERDUE" || item.status == "OVERDUE" ->
-            Triple("Terlambat", ForfhColors.Danger, Color.White)
-        item.status == "IN_PROGRESS" -> Triple("Proses", ForfhColors.Accent, Color.White)
-        item.status == "REVISION" -> Triple("Revisi", ForfhColors.Warning, Color.White)
-        else -> Triple("Belum", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+            Triple("Terlambat", ForfhColors.StatusTerlambatBg, ForfhColors.StatusTerlambatFg)
+        item.status == "IN_PROGRESS" -> Triple("Proses", ForfhColors.StatusProsesBg, ForfhColors.StatusProsesFg)
+        item.status == "REVISION" -> Triple("Revisi", ForfhColors.StatusRevisiBg, ForfhColors.StatusRevisiFg)
+        else -> Triple("Belum", ForfhColors.StatusBelumBg, ForfhColors.StatusBelumFg)
     }
-    val base = Modifier
-        .background(bg, RoundedCornerShape(6.dp))
-        .padding(horizontal = 8.dp, vertical = 4.dp)
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelLarge,
-        color = fg,
-        modifier = if (item.status == "DONE" && item.syncState == syncState.FAILED) {
-            Modifier.clickable(onClick = onRetry).then(base)
-        } else {
-            base
-        },
-    )
+
+    if (item.status == "DONE" && item.syncState == syncState.FAILED) {
+        Box(modifier = Modifier.clickable { onRetry() }) {
+            ForfhStatusPill(text = label, foreground = fg, background = bg)
+        }
+    } else {
+        ForfhStatusPill(text = label, foreground = fg, background = bg)
+    }
 }

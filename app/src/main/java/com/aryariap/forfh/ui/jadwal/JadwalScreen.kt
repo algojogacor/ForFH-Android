@@ -1,29 +1,34 @@
 package com.aryariap.forfh.ui.jadwal
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,14 +40,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.info.SyncActivity
 import com.aryariap.forfh.ui.theme.ForfhColors
+import com.aryariap.forfh.ui.theme.ForfhSurface
+import com.aryariap.forfh.ui.theme.ForfhTopBar
+import com.aryariap.forfh.ui.theme.ForfhTypeExtras
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -51,18 +65,8 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
     val state by viewModel.state.collectAsState()
     val nextUp by nextUpViewModel.state.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
-    // Jam lokal UI untuk countdown "Berikutnya": ditulis tiap tick (LaunchedEffect di bawah),
-    // dibaca NextUpCard via parameter → saat berubah, kartu recompose dan teks countdown
-    // (dihitung dari nowMs saat komposisi) ikut berjalan. Tick di UI, bukan di ViewModel.
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    // Ticker kartu "Berikutnya": tick + refresh 30 dtk HANYA di tab "Hari ini" (tab 0) —
-    // countdown ada di tab itu, tab "Seminggu" tidak menampilkan waktu real-time jadi tak perlu
-    // tick berkala. Akurasi menit cukup untuk countdown, hemat baterai (bukan 1 dtk). Tick di UI:
-    // refresh() saja tidak cukup — state VM identik (kelas/alarm sama) → Compose skip
-    // recomposition; penulisan nowMs selalu mengubah nilai → recompose pasti terjadi.
-    // Berhenti otomatis saat layar keluar komposisi; ganti tab → efek di-cancel & restart,
-    // jadi kembali ke tab 0 langsung tick + refresh sekali.
     LaunchedEffect(tab) {
         if (tab != 0) return@LaunchedEffect
         while (isActive) {
@@ -72,39 +76,85 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
         }
     }
 
+    val todayFormatted = remember {
+        LocalDate.now(ZoneId.of("Asia/Jakarta")).format(
+            DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale("id", "ID"))
+        )
+    }
+
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             Column {
-                Text(
-                    text = "Jadwal",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                ForfhTopBar(
+                    title = "Jadwal",
+                    eyebrow = todayFormatted,
+                    trailing = {
+                        IconButton(onClick = viewModel::syncNow) {
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Sinkronkan",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
                 )
-                TabRow(selectedTabIndex = tab) {
-                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Hari ini") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Seminggu") })
+                // Segmented Tab Switcher (Hari ini / Seminggu)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(4.dp),
+                ) {
+                    listOf("Hari ini", "Seminggu").forEachIndexed { index, label ->
+                        val selected = tab == index
+                        val bg by animateColorAsState(
+                            if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
+                            label = "tabBg",
+                        )
+                        val textColor by animateColorAsState(
+                            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = "tabText",
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(bg)
+                                .clickable { tab = index }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = textColor,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        }
+                    }
                 }
             }
         },
     ) { padding ->
-        // Pull-to-refresh: tarik → sync satu-kali (Task 11). Indikator hanya saat worker
-        // benar-benar RUNNING; QUEUED (menunggu jaringan) tidak memutar spinner tanpa batas
-        // (semantik yang sama dengan layar Info).
         PullToRefreshBox(
             isRefreshing = state.syncActivity == SyncActivity.RUNNING,
             onRefresh = viewModel::syncNow,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (tab == 0) {
-                    // Kartu "Berikutnya": di atas daftar hari ini, hanya saat ada data (kelas atau alarm).
                     if (nextUp.nextClass != null || nextUp.nextAlarm != null) {
                         item {
-                            NextUpCard(
+                            NextUpHeroCard(
                                 state = nextUp,
                                 nowMs = nowMs,
                                 onMute = nextUpViewModel::muteToday,
@@ -112,26 +162,59 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
                             )
                         }
                     }
-                    items(state.today) { item -> KuliahCard(item) }
+
+                    if (state.today.isEmpty()) {
+                        item {
+                            ForfhSurface {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(
+                                        text = "Tidak Ada Kuliah Hari Ini",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        text = "Nikmati waktu istirahat atau pelajari materi berikutnya.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        items(state.today) { item ->
+                            ScheduleRowCard(item)
+                        }
+                    }
                 } else {
                     items(state.week) { hari ->
                         if (hari.items.isNotEmpty()) {
                             Text(
-                                text = hari.label,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 8.dp),
+                                text = hari.label.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                             )
-                            hari.items.forEach { KuliahCard(it) }
+                            hari.items.forEach {
+                                ScheduleRowCard(it)
+                                Spacer(Modifier.height(8.dp))
+                            }
                         }
                     }
                 }
+
                 item {
                     Text(
                         text = "Terakhir sinkron: ${UiFormat.syncInfo(state.lastSyncStatus, state.lastSyncAt)}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = ForfhTypeExtras.MonoMeta,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                     )
                 }
             }
@@ -139,123 +222,206 @@ fun JadwalScreen(viewModel: JadwalViewModel, nextUpViewModel: NextUpViewModel) {
     }
 }
 
-/**
- * Kartu "Berikutnya": kelas berikutnya + countdown (start WIB, ruling R5), alarm berikutnya,
- * dan quick mute "hari ini" (pola PengaturanScreen). Pemanggil hanya mengomposisikan kartu
- * saat ada data; baris di dalamnya opsional.
- */
 @Composable
-private fun NextUpCard(
+private fun NextUpHeroCard(
     state: NextUpUiState,
     nowMs: Long = System.currentTimeMillis(),
     onMute: () -> Unit,
     onUnmute: () -> Unit,
 ) {
     val wib = ZoneId.of("Asia/Jakarta")
-    // WIB diturunkan dari nowMs (tick UI dari JadwalScreen). Default = jam saat komposisi,
-    // sehingga pemakaian kartu di luar screen tetap berperilaku sama; dengan nowMs yang
-    // ditick, perubahan nilai memaksa recompose → countdown di bawah terhitung ulang.
     val now = Instant.ofEpochMilli(nowMs).atZone(wib)
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    val accent = courseColor(state.nextClass?.first?.courseColor)
+
+    Surface(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = ForfhColors.NavyDark,
+        border = BorderStroke(1.dp, ForfhColors.Brass.copy(alpha = 0.35f)),
     ) {
-        Row(
-            modifier = Modifier
-                .padding(14.dp)
-                .height(IntrinsicSize.Min),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(courseColor(state.nextClass?.first?.courseColor)),
+        Box(
+            modifier = Modifier.background(
+                Brush.horizontalGradient(
+                    listOf(ForfhColors.NavyDark, ForfhColors.NavyHeroEnd)
+                )
             )
-            Spacer(Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                state.nextClass?.let { (kls, start) ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Dynamic 5dp left accent strip
+                Box(
+                    modifier = Modifier
+                        .width(5.dp)
+                        .height(140.dp)
+                        .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
+                        .background(accent)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
-                            // "{nama}" = kode course (contoh plan: "PIH"), fallback nama lengkap.
-                            // Tanpa maxLines/ellipsis: baris membungkus alami bila sempit (jarang,
-                            // barisnya pendek) — kode course + jam selalu terbaca utuh.
-                            text = "Kelas berikutnya: ${kls.courseCode ?: kls.courseName} (${UiFormat.timeOf(start)})",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f, fill = false),
+                            text = "KELAS BERIKUTNYA",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ForfhColors.Brass,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
                         )
-                        // Countdown ("dalam ...") Text terpisah tanpa batas lebar: diukur penuh
-                        // oleh Row dan tidak pernah terpotong — nama yang panjang membungkus di
-                        // sisa ruang (weight), bukan memotong teks ini.
+
+                        state.nextAlarm?.let {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Color.White.copy(alpha = 0.12f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Notifications,
+                                    contentDescription = "Alarm",
+                                    tint = ForfhColors.Brass,
+                                    modifier = Modifier.size(13.dp),
+                                )
+                                Text(
+                                    text = UiFormat.timeOf(it.triggerAtMillis, wib),
+                                    style = ForfhTypeExtras.MonoMeta,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+
+                    state.nextClass?.let { (kls, start) ->
                         Text(
-                            text = " · dalam ${UiFormat.countdownTo(now, start)}",
+                            text = kls.courseName,
                             style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Bottom,
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Mulai dalam",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                )
+                                Text(
+                                    text = UiFormat.countdownTo(now, start),
+                                    style = ForfhTypeExtras.MonoCountdown,
+                                    color = ForfhColors.Brass,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+
+                            Text(
+                                text = "${UiFormat.timeOf(start)} WIB",
+                                style = ForfhTypeExtras.MonoMeta,
+                                color = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color.White.copy(alpha = 0.12f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+
+                    if (state.mutedToday) {
+                        Text(
+                            text = "Aktifkan lagi alarm hari ini",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ForfhColors.Brass,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onUnmute() }
+                                .padding(vertical = 4.dp),
+                        )
+                    } else if (state.nextAlarm != null) {
+                        Text(
+                            text = "Senyapkan alarm hari ini",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.75f),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onMute() }
+                                .padding(vertical = 4.dp),
                         )
                     }
-                }
-                state.nextAlarm?.let { alarm ->
-                    Text(
-                        text = "Alarm berikutnya ${UiFormat.timeOf(alarm.triggerAtMillis, wib)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                // Tombol mute kecil (pola PengaturanScreen, teks sama persis): "Aktifkan lagi
-                // alarm hari ini" saat sedang mute; "Matikan seluruh alarm hari ini" hanya saat
-                // ada alarm untuk dimatikan (tanpa alarm, tombol mute adalah kontrol mati).
-                if (state.mutedToday) {
-                    TextButton(onClick = onUnmute) { Text("Aktifkan lagi alarm hari ini") }
-                } else if (state.nextAlarm != null) {
-                    TextButton(onClick = onMute) { Text("Matikan seluruh alarm hari ini") }
                 }
             }
         }
     }
 }
 
-/** Warna course dari hex "RRGGBB"; fallback accent bila tidak valid (pola KuliahCard). */
 private fun courseColor(hex: String?): Color =
-    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(ForfhColors.Accent)
+    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(ForfhColors.Navy)
 
 @Composable
-private fun KuliahCard(item: JadwalItem) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(44.dp)
-                    .background(courseColor(item.color)),
-            )
-            Spacer(Modifier.width(12.dp))
-            Column {
+private fun ScheduleRowCard(item: JadwalItem) {
+    ForfhSurface(accent = courseColor(item.color)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Time Column
+            Column(
+                modifier = Modifier.width(56.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = UiFormat.timeText(item.startTime),
+                    style = ForfhTypeExtras.MonoMeta,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = UiFormat.timeText(item.endTime),
+                    style = ForfhTypeExtras.MonoMeta,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            // Details Column
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = item.courseName,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = buildString {
-                        append(UiFormat.range(item.startTime, item.endTime))
                         when {
-                            item.onlineUrl != null -> append(" · Daring")
-                            !item.room.isNullOrBlank() -> append(" · ${item.room}")
+                            item.onlineUrl != null -> append("Daring")
+                            !item.room.isNullOrBlank() -> append(item.room)
+                            else -> append("FH UNAIR")
                         }
+                        item.courseCode?.let { append(" · $it") }
                     },
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                item.courseCode?.let { code ->
-                    Text(
-                        text = code,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
         }
     }
