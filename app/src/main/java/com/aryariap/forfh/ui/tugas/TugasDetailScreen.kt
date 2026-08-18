@@ -105,11 +105,21 @@ private fun resolveTaskUrl(item: TugasItem): Pair<String, String> {
     item.externalId?.let { ext ->
         val digits = Regex("(\\d+)").find(ext)?.groupValues?.get(1)
         if (!digits.isNullOrBlank()) {
-            return "https://hebat.elearning.unair.ac.id/calendar/view.php?view=event&id=$digits" to "Buka Pengumpulan di HEBAT"
+            return "https://hebat.elearning.unair.ac.id/calendar/view.php?view=event&id=$digits" to "Buka Penugasan di HEBAT"
         }
     }
 
-    // 3. Fallback ke homepage HEBAT UNAIR
+    // 3. Jika tugas terafiliasi dengan Mata Kuliah (berdasarkan Kode MK atau Nama MK HEBAT)
+    val query = item.courseCode?.trim().takeIf { !it.isNullOrBlank() }
+        ?: item.courseName?.trim().takeIf { !it.isNullOrBlank() }
+
+    if (!query.isNullOrBlank()) {
+        val encodedQuery = Uri.encode(query)
+        val courseTitle = item.courseName ?: query
+        return "https://hebat.elearning.unair.ac.id/course/search.php?search=$encodedQuery" to "Buka Mata Kuliah di HEBAT ($courseTitle)"
+    }
+
+    // 4. Fallback ke portal utama HEBAT
     return "https://hebat.elearning.unair.ac.id" to "Buka di HEBAT e-Learning"
 }
 
