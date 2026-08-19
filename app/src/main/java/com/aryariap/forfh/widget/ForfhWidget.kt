@@ -159,26 +159,24 @@ private fun CompactContent(
                     ),
                     maxLines = 2,
                 )
-                Spacer(GlanceModifier.height(3.dp))
-                val timeAndRoom = buildString {
-                    append(UiFormat.timeOf(nextClass.second))
-                    course.room?.let { append(" · R. $it") }
-                    course.courseCode?.let { append(" · $it") }
-                }
+                Spacer(GlanceModifier.height(2.dp))
+                val timeStr = "${course.startTime} - ${course.endTime}"
+                val roomStr = formatWidgetRoom(course.room)
+                val secondLine = if (roomStr != null) "$timeStr · $roomStr" else timeStr
                 Text(
-                    text = timeAndRoom,
+                    text = secondLine,
                     style = TextStyle(
                         fontSize = 11.sp,
                         color = GlanceTheme.colors.onSurfaceVariant,
                     ),
-                    maxLines = 1,
+                    maxLines = 2,
                 )
                 if (nextAlarm != null) {
                     Spacer(GlanceModifier.height(2.dp))
                     Text(
                         text = "Alarm: ${UiFormat.timeOf(nextAlarm.triggerAtMillis, WIB)}",
                         style = TextStyle(
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             color = ColorProvider(ForfhColors.LinearIndigo),
                             fontWeight = FontWeight.Medium,
                         ),
@@ -285,9 +283,10 @@ private fun StandardContent(
                 Spacer(GlanceModifier.height(3.dp))
 
                 // Secondary Info Row (Time, Room, Course Code, Alarm)
+                val roomStr = formatWidgetRoom(course.room)
                 val metaText = buildString {
                     append("${course.startTime} - ${course.endTime} WIB")
-                    course.room?.let { append(" · R. $it") }
+                    if (roomStr != null) append(" · $roomStr")
                     course.courseCode?.let { append(" · $it") }
                     if (nextAlarm != null) {
                         append(" · 🔔 ${UiFormat.timeOf(nextAlarm.triggerAtMillis, WIB)}")
@@ -299,7 +298,7 @@ private fun StandardContent(
                         fontSize = 11.sp,
                         color = GlanceTheme.colors.onSurfaceVariant,
                     ),
-                    maxLines = 1,
+                    maxLines = 2,
                 )
             } else {
                 Text(
@@ -321,6 +320,39 @@ private fun StandardContent(
                 )
             }
         }
+    }
+}
+
+/**
+ * Format nama ruangan agar ringkas dan muat di widget home screen.
+ * Mengambil kode ruangan spesifik (contoh: "LG02 B", "304", "3.06") tanpa redundansi nama gedung panjang.
+ */
+internal fun formatWidgetRoom(rawRoom: String?): String? {
+    if (rawRoom.isNullOrBlank()) return null
+    val trimmed = rawRoom.trim()
+    if (trimmed.contains("daring", ignoreCase = true) || 
+        trimmed.contains("online", ignoreCase = true) || 
+        trimmed.contains("zoom", ignoreCase = true)) {
+        return "Daring"
+    }
+
+    val parts = trimmed.split(" - ").map { it.trim() }.filter { it.isNotEmpty() }
+    if (parts.isEmpty()) return null
+
+    // Cari bagian yang mengandung kode ruangan spesifik (misal "LG02 B", "304", "3.06")
+    val codePart = parts.firstOrNull { part ->
+        part.matches(Regex("^[A-Za-z]{0,4}\\d+.*")) && !part.startsWith("Ruang Kelas", ignoreCase = true)
+    } ?: parts.firstOrNull { it.matches(Regex(".*\\d+.*")) && !it.startsWith("Ruang Kelas", ignoreCase = true) }
+      ?: parts.first()
+
+    val cleaned = codePart
+        .replace(Regex("^(Ruang Kelas|Ruang)\\s*", RegexOption.IGNORE_CASE), "")
+        .trim()
+
+    return if (cleaned.startsWith("R.", ignoreCase = true) || cleaned.startsWith("Ruang", ignoreCase = true)) {
+        cleaned
+    } else {
+        "R. $cleaned"
     }
 }
 
