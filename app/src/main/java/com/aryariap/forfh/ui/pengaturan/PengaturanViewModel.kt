@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryariap.forfh.AppContainer
 import com.aryariap.forfh.data.prefs.AlarmOffsets
+import com.aryariap.forfh.data.update.AppUpdateInfo
+import com.aryariap.forfh.data.update.UpdateChecker
 import com.aryariap.forfh.sync.SyncWorker
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
@@ -18,6 +20,9 @@ data class PengaturanUiState(
     val lastSyncAt: Long = 0L,
     /** "yyyy-MM-dd" saat seluruh alarm kuliah hari itu dimatikan user (null = normal). */
     val mutedDate: String? = null,
+    val isCheckingUpdate: Boolean = false,
+    val updateInfo: AppUpdateInfo? = null,
+    val updateChecked: Boolean = false,
 )
 
 class PengaturanViewModel(private val container: AppContainer) : ViewModel() {
@@ -30,6 +35,7 @@ class PengaturanViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch { container.prefs.lastSyncStatus.collect { s -> _state.value = _state.value.copy(lastSyncStatus = s) } }
         viewModelScope.launch { container.prefs.lastSyncAt.collect { t -> _state.value = _state.value.copy(lastSyncAt = t) } }
         viewModelScope.launch { container.prefs.mutedDate.collect { d -> _state.value = _state.value.copy(mutedDate = d) } }
+        checkForUpdates()
     }
 
     /**
@@ -81,6 +87,25 @@ class PengaturanViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun syncNow() { SyncWorker.enqueueOneShot(container.context) }
+
+    fun checkForUpdates() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isCheckingUpdate = true)
+            val info = UpdateChecker.checkLatestRelease()
+            _state.value = _state.value.copy(
+                isCheckingUpdate = false,
+                updateInfo = info,
+                updateChecked = true,
+            )
+        }
+    }
+
+    fun resetLastSeenVersion(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            container.prefs.resetLastSeenVersionCode()
+            onComplete()
+        }
+    }
 
     fun logout() { container.logout("Kamu sudah keluar.") }
 }

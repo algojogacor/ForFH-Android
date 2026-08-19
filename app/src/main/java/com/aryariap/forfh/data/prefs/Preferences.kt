@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -24,6 +25,7 @@ class Preferences(private val dataStore: DataStore<Preferences>) : SyncStateStor
     private val keyLastSyncStatus = stringPreferencesKey("last_sync_status")
     private val keyMutedDate = stringPreferencesKey("alarms_muted_date")
     private val keyPendingMarkDone = stringSetPreferencesKey("pending_mark_done")
+    private val keyLastSeenVersionCode = intPreferencesKey("last_seen_version_code")
 
     val offsets: Flow<AlarmOffsets> = dataStore.data.map { p ->
         val hasNewKeys = (0..6).any { p[dayKey(it)] != null }
@@ -92,5 +94,16 @@ class Preferences(private val dataStore: DataStore<Preferences>) : SyncStateStor
             val rest = (p[keyPendingMarkDone] ?: emptySet()) - id
             if (rest.isEmpty()) p.remove(keyPendingMarkDone) else p[keyPendingMarkDone] = rest
         }
+    }
+
+    suspend fun getLastSeenVersionCode(): Int =
+        dataStore.data.first()[keyLastSeenVersionCode] ?: -1
+
+    suspend fun setLastSeenVersionCode(versionCode: Int) {
+        dataStore.edit { p -> p[keyLastSeenVersionCode] = versionCode }
+    }
+
+    suspend fun resetLastSeenVersionCode() {
+        dataStore.edit { p -> p[keyLastSeenVersionCode] = 0 }
     }
 }

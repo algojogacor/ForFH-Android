@@ -24,8 +24,8 @@ android {
         applicationId = "com.aryariap.forfh"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "2.1.0"
+        versionCode = 5
+        versionName = "2.3.0"
     }
 
     signingConfigs {

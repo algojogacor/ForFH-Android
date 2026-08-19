@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -19,8 +21,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.aryariap.forfh.AppContainer
+import com.aryariap.forfh.BuildConfig
 import com.aryariap.forfh.ForfhApp
+import com.aryariap.forfh.data.changelog.ChangelogCatalog
+import com.aryariap.forfh.data.changelog.ChangelogEntry
 import com.aryariap.forfh.data.prefs.SessionEvent
+import com.aryariap.forfh.ui.changelog.WhatsNewBottomSheet
 import com.aryariap.forfh.ui.info.InfoScreen
 import com.aryariap.forfh.ui.info.InfoViewModel
 import com.aryariap.forfh.ui.jadwal.JadwalScreen
@@ -100,6 +106,33 @@ private fun MainScaffold(container: AppContainer, startTab: Int?) {
     val tugasVm: TugasViewModel = viewModel(factory = simpleFactory { TugasViewModel(containerApp) })
     val infoVm: InfoViewModel = viewModel(factory = simpleFactory { InfoViewModel(containerApp) })
     val pengaturanVm: PengaturanViewModel = viewModel(factory = simpleFactory { PengaturanViewModel(containerApp) })
+
+    var whatsNewEntry by remember { mutableStateOf<ChangelogEntry?>(null) }
+
+    LaunchedEffect(Unit) {
+        val lastSeen = container.prefs.getLastSeenVersionCode()
+        val currentCode = BuildConfig.VERSION_CODE
+        if (lastSeen == -1) {
+            // First time install -> record current version without showing "What's New"
+            container.prefs.setLastSeenVersionCode(currentCode)
+        } else if (lastSeen < currentCode) {
+            // Updated from older version -> show "What's New" for the current version!
+            val entry = ChangelogCatalog.getForVersion(currentCode, context) ?: ChangelogCatalog.getLatest(context)
+            whatsNewEntry = entry
+            container.prefs.setLastSeenVersionCode(currentCode)
+        }
+    }
+
+    whatsNewEntry?.let { entry ->
+        WhatsNewBottomSheet(
+            entry = entry,
+            onDismiss = { whatsNewEntry = null },
+            onViewAllHistory = {
+                whatsNewEntry = null
+                tab = 3
+            },
+        )
+    }
 
     Scaffold(
         containerColor = ForfhColors.PitchBlack,
