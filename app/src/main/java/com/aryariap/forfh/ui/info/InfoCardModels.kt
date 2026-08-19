@@ -189,19 +189,29 @@ object InfoCardModels {
         return if (s.lowercase().startsWith("aktif")) StatusTone.POSITIVE else StatusTone.NEUTRAL
     }
 
+    private typealias CardBuilder = (jenis: String, rows: List<JsonObject>) -> InfoCardModel
+
+    private val CARD_BUILDERS: Map<String, CardBuilder> = mapOf(
+        JENIS_STATUS_MHS to { _, rows -> identityCard(rows) },
+        JENIS_PESERTA_MK to { _, rows -> courseList(rows) },
+        JENIS_HIST_HER to { _, rows -> herList(rows) },
+        JENIS_PEMBAYARAN to { _, rows -> paymentList(rows) },
+        JENIS_KALENDER to { _, rows -> calendarList(rows) },
+        JENIS_DOSEN_WALI to { _, rows -> dosenWali(rows) },
+        JENIS_MASA_STUDI to ::summaryCard,
+        JENIS_SKS_AKTIF to ::summaryCard,
+        JENIS_PENYERAHAN_KTM to ::summaryCard,
+        JENIS_INSTRUKSI_TUGAS to { _, rows -> instructions(rows) },
+    )
+
     /** dataJson baris mentah → model per jenis; jenis tak dikenal → generic (label penuh). */
     fun buildInfoCardModel(jenis: String, dataJson: String): InfoCardModel {
         val rows = parseRows(dataJson)
-        return when (jenis) {
-            JENIS_STATUS_MHS -> identityCard(rows)
-            JENIS_PESERTA_MK -> courseList(rows)
-            JENIS_HIST_HER -> herList(rows)
-            JENIS_PEMBAYARAN -> paymentList(rows)
-            JENIS_KALENDER -> calendarList(rows)
-            JENIS_DOSEN_WALI -> dosenWali(rows)
-            JENIS_MASA_STUDI, JENIS_SKS_AKTIF, JENIS_PENYERAHAN_KTM -> summaryCard(jenis, rows)
-            JENIS_INSTRUKSI_TUGAS -> instructions(rows)
-            else -> GenericRowModel(InfoFormat.kampusRows(dataJson))
+        val builder = CARD_BUILDERS[jenis]
+        return if (builder != null) {
+            builder(jenis, rows)
+        } else {
+            GenericRowModel(InfoFormat.kampusRows(dataJson))
         }
     }
 
