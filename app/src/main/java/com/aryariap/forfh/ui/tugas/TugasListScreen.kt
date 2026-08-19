@@ -142,7 +142,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                             selected = selectedFilter == TaskFilter.ALL,
                             onClick = { selectedFilter = TaskFilter.ALL },
                             label = "Semua",
-                            count = activeTasks.size,
+                            count = state.items.size,
                         )
                     }
                     if (overdueTasks.isNotEmpty()) {
@@ -325,7 +325,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                 item {
                                     SectionHeader(title = "SELESAI", count = completedTasks.size, color = ForfhColors.StatusSelesaiFg)
                                 }
-                                items(completedTasks.take(10), key = { it.id }) { item ->
+                                items(completedTasks, key = { it.id }) { item ->
                                     TodoistTaskItem(
                                         item = item,
                                         zone = zone,

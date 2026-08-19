@@ -57,6 +57,7 @@ import com.aryariap.forfh.ui.theme.ForfhSurface
 import com.aryariap.forfh.ui.theme.ForfhTypeExtras
 import com.aryariap.forfh.ui.theme.OutlineButton
 import com.aryariap.forfh.ui.theme.PrimaryButton
+import com.aryariap.forfh.ui.theme.PriorityPill
 import java.time.ZoneId
 import java.util.regex.Pattern
 import kotlinx.serialization.json.Json
@@ -199,17 +200,9 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                 }
                 ForfhStatusPill(text = statusLabel, foreground = statusFg, background = statusBg)
 
-                val priorityColor = when (item.priority.lowercase()) {
-                    "urgent", "p1" -> ForfhColors.PriorityP1
-                    "high", "p2" -> ForfhColors.PriorityP2
-                    "medium", "p3" -> ForfhColors.PriorityP3
-                    else -> ForfhColors.PriorityP4
+                if (!item.priority.isNullOrBlank()) {
+                    PriorityPill(priority = item.priority)
                 }
-                ForfhStatusPill(
-                    text = "Prioritas ${item.priority.replaceFirstChar { it.uppercase() }}",
-                    foreground = priorityColor,
-                    background = priorityColor.copy(alpha = 0.15f),
-                )
             }
 
             // Title & Course
