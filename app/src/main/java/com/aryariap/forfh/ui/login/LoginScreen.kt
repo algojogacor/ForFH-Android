@@ -111,7 +111,7 @@ fun LoginScreen(viewModel: LoginViewModel) {
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
-                    painter = painterResource(R.mipmap.ic_launcher),
+                    painter = painterResource(R.drawable.ic_forfh_logo),
                     contentDescription = "Logo ForFH",
                     modifier = Modifier
                         .size(56.dp)
