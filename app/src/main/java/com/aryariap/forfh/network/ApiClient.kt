@@ -27,8 +27,9 @@ object ApiClient {
         }
         return OkHttpClient.Builder()
             .cookieJar(cookieJar)
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(45, TimeUnit.SECONDS)
             .addInterceptor(SessionExpiryInterceptor(sessionManager))
             .addInterceptor(logging)
             .build()
