@@ -60,6 +60,11 @@ class SyncRepositoryTest {
                 if (it.id == id) it.copy(status = "DONE", computedStatus = null, syncState = TaskEntity.SyncState.PENDING) else it
             }
         }
+        override suspend fun updateUnmarked(id: String) {
+            items = items.map {
+                if (it.id == id) it.copy(status = "NOT_STARTED", computedStatus = null, syncState = TaskEntity.SyncState.PENDING) else it
+            }
+        }
         override suspend fun updateSyncState(id: String, state: String) {
             items = items.map { if (it.id == id) it.copy(syncState = state) else it }
         }

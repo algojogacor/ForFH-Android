@@ -49,8 +49,14 @@ interface TasksDao {
     suspend fun updateMarked(id: String)
 
     /**
-     * Hasil PUT markDone (Task 10): syncState = SYNCED (sukses) / FAILED (gagal).
-     * Status tugas tidak disentuh lagi — sudah DONE dari updateMarked.
+     * Batalkan selesai optimistik: status NOT_STARTED + computedStatus NULL + syncState PENDING.
+     */
+    @Query("UPDATE tasks SET status = 'NOT_STARTED', computedStatus = NULL, syncState = 'PENDING' WHERE id = :id")
+    suspend fun updateUnmarked(id: String)
+
+    /**
+     * Hasil PUT markDone / unmarkDone (Task 10): syncState = SYNCED (sukses) / FAILED (gagal).
+     * Status tugas tidak disentuh lagi — sudah DONE atau NOT_STARTED dari updateMarked/updateUnmarked.
      */
     @Query("UPDATE tasks SET syncState = :state WHERE id = :id")
     suspend fun updateSyncState(id: String, state: String)

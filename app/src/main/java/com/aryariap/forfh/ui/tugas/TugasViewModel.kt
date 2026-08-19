@@ -118,6 +118,30 @@ class TugasViewModel(private val container: TugasContainer) : ViewModel() {
     }
 
     /**
+     * Toggle status selesai/belum (Task 10 & 11): jika DONE -> unmarkDone, selain itu -> markDone.
+     */
+    fun toggleDone(taskId: String) {
+        val currentItem = _state.value.items.firstOrNull { it.id == taskId }
+            ?: _state.value.detail?.takeIf { it.id == taskId }
+        if (currentItem != null) {
+            if (currentItem.status == "DONE") {
+                unmarkDone(taskId)
+            } else {
+                markDone(taskId)
+            }
+        } else {
+            viewModelScope.launch {
+                val entity = container.tasksDao.getByIdOnce(taskId)
+                if (entity?.status == "DONE") {
+                    unmarkDone(taskId)
+                } else {
+                    markDone(taskId)
+                }
+            }
+        }
+    }
+
+    /**
      * Mark selesai OPTIMISTIK (Task 10): update Room + UI SEKETIKA (DONE + syncState PENDING,
      * id masuk pending_mark_done) → PUT berjalan background (viewModelScope). Sukses → SYNCED
      * (tanpa sentuh UI lagi); gagal (HTTP/network) → FAILED + pesan sekali-pakai. Retry gagal
@@ -138,7 +162,7 @@ class TugasViewModel(private val container: TugasContainer) : ViewModel() {
                 val resp = try {
                     container.apiService.markDone(taskId, MarkDoneRequest("DONE"))
                 } catch (e: IOException) {
-                    failPending(taskId)
+                    failPending(taskId, "Gagal menandai selesai. Cek koneksi, coba lagi.")
                     return@launch
                 }
                 if (resp.isSuccessful) {
@@ -146,7 +170,7 @@ class TugasViewModel(private val container: TugasContainer) : ViewModel() {
                     container.syncState.removePendingMarkDone(taskId)
                     _state.value = _state.value.copy(message = null)
                 } else {
-                    failPending(taskId)
+                    failPending(taskId, "Gagal menandai selesai. Cek koneksi, coba lagi.")
                 }
             } finally {
                 inFlight.remove(taskId)
@@ -154,10 +178,38 @@ class TugasViewModel(private val container: TugasContainer) : ViewModel() {
         }
     }
 
-    private suspend fun failPending(taskId: String) {
+    /**
+     * Batalkan selesai OPTIMISTIK: update Room + UI SEKETIKA (NOT_STARTED + syncState PENDING),
+     * kirim status "NOT_STARTED" ke server.
+     */
+    fun unmarkDone(taskId: String) {
+        if (!inFlight.add(taskId)) return
+        viewModelScope.launch {
+            try {
+                container.tasksDao.updateUnmarked(taskId)
+                container.syncState.removePendingMarkDone(taskId)
+                val resp = try {
+                    container.apiService.markDone(taskId, MarkDoneRequest("NOT_STARTED"))
+                } catch (e: IOException) {
+                    failPending(taskId, "Gagal membatalkan selesai. Cek koneksi, coba lagi.")
+                    return@launch
+                }
+                if (resp.isSuccessful) {
+                    container.tasksDao.updateSyncState(taskId, TaskEntity.SyncState.SYNCED)
+                    _state.value = _state.value.copy(message = null)
+                } else {
+                    failPending(taskId, "Gagal membatalkan selesai. Cek koneksi, coba lagi.")
+                }
+            } finally {
+                inFlight.remove(taskId)
+            }
+        }
+    }
+
+    private suspend fun failPending(taskId: String, errorMsg: String = "Gagal menandai selesai. Cek koneksi, coba lagi.") {
         container.tasksDao.updateSyncState(taskId, TaskEntity.SyncState.FAILED)
         container.syncState.removePendingMarkDone(taskId)
-        _state.value = _state.value.copy(message = "Gagal menandai selesai. Cek koneksi, coba lagi.")
+        _state.value = _state.value.copy(message = errorMsg)
     }
 
     private fun TaskEntity.toItem() = TugasItem(

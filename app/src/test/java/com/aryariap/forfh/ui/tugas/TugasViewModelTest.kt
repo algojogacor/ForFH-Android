@@ -74,6 +74,11 @@ class TugasViewModelTest {
                 if (it.id == id) it.copy(status = "DONE", computedStatus = null, syncState = TaskEntity.SyncState.PENDING) else it
             }
         }
+        override suspend fun updateUnmarked(id: String) {
+            items.value = items.value.map {
+                if (it.id == id) it.copy(status = "NOT_STARTED", computedStatus = null, syncState = TaskEntity.SyncState.PENDING) else it
+            }
+        }
         override suspend fun updateSyncState(id: String, state: String) {
             items.value = items.value.map { if (it.id == id) it.copy(syncState = state) else it }
         }
@@ -316,5 +321,44 @@ class TugasViewModelTest {
         advanceUntilIdle()
         assertNull(viewModel.state.value.message)
         assertEquals(TaskEntity.SyncState.SYNCED, dao.items.value.single().syncState)
+    }
+
+    @Test
+    fun `unmarkDone optimistik - NOT_STARTED dan PENDING muncul sebelum PUT selesai`() = runTest(dispatcher) {
+        val completedTask = task().copy(status = "DONE")
+        val dao = FakeTasksDao(initial = listOf(completedTask))
+        val api = FakeApi()
+        val viewModel = vm(dao, api, FakeSyncState())
+
+        viewModel.unmarkDone("t1")
+        advanceUntilIdle()
+
+        // UI + Room sudah NOT_STARTED + PENDING
+        assertEquals("NOT_STARTED", dao.items.value.single().status)
+        assertEquals(TaskEntity.SyncState.PENDING, dao.items.value.single().syncState)
+
+        // Setelah PUT sukses -> SYNCED
+        api.completeSuccess()
+        advanceUntilIdle()
+        assertEquals("NOT_STARTED", dao.items.value.single().status)
+        assertEquals(TaskEntity.SyncState.SYNCED, dao.items.value.single().syncState)
+    }
+
+    @Test
+    fun `toggleDone otomatis unmark jika DONE dan markDone jika NOT_STARTED`() = runTest(dispatcher) {
+        val dao = FakeTasksDao(initial = listOf(task("t1").copy(status = "DONE"), task("t2").copy(status = "NOT_STARTED")))
+        val api = FakeApi()
+        val viewModel = vm(dao, api, FakeSyncState())
+        advanceUntilIdle()
+
+        // t1 (DONE) -> di-toggle jadi NOT_STARTED
+        viewModel.toggleDone("t1")
+        advanceUntilIdle()
+        assertEquals("NOT_STARTED", dao.items.value.first { it.id == "t1" }.status)
+
+        // t2 (NOT_STARTED) -> di-toggle jadi DONE
+        viewModel.toggleDone("t2")
+        advanceUntilIdle()
+        assertEquals("DONE", dao.items.value.first { it.id == "t2" }.status)
     }
 }

@@ -55,6 +55,7 @@ import com.aryariap.forfh.ui.theme.ForfhColors
 import com.aryariap.forfh.ui.theme.ForfhStatusPill
 import com.aryariap.forfh.ui.theme.ForfhSurface
 import com.aryariap.forfh.ui.theme.ForfhTypeExtras
+import com.aryariap.forfh.ui.theme.OutlineButton
 import com.aryariap.forfh.ui.theme.PrimaryButton
 import java.time.ZoneId
 import java.util.regex.Pattern
@@ -141,7 +142,7 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
             }
         },
         bottomBar = {
-            if (item != null && item.status != "DONE") {
+            if (item != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -149,11 +150,19 @@ fun TugasDetailScreen(viewModel: TugasViewModel, taskId: String) {
                         .border(BorderStroke(1.dp, ForfhColors.BorderSubtle))
                         .padding(horizontal = 18.dp, vertical = 12.dp)
                 ) {
-                    PrimaryButton(
-                        text = "Tandai Selesai",
-                        onClick = { viewModel.markDone(item.id) },
-                        height = 50.dp,
-                    )
+                    if (item.status == "DONE") {
+                        OutlineButton(
+                            text = "Tandai Belum Selesai",
+                            onClick = { viewModel.unmarkDone(item.id) },
+                            height = 50.dp,
+                        )
+                    } else {
+                        PrimaryButton(
+                            text = "Tandai Selesai",
+                            onClick = { viewModel.markDone(item.id) },
+                            height = 50.dp,
+                        )
+                    }
                 }
             }
         }

@@ -75,6 +75,7 @@ class JadwalViewModelTest {
         override fun getDueTasksOnce(fromMillis: Long, toMillis: Long): List<TaskEntity> =
             list.filter { it.status != "DONE" && it.dueAt != null && it.dueAt in fromMillis until toMillis }
         override suspend fun updateMarked(id: String) = Unit
+        override suspend fun updateUnmarked(id: String) = Unit
         override suspend fun updateSyncState(id: String, state: String) = Unit
         override fun clearAll() = Unit
         override fun insertAll(items: List<TaskEntity>) = Unit

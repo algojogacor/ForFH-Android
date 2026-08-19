@@ -239,7 +239,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                     item = item,
                                     zone = zone,
                                     onClick = { viewModel.openDetail(item.id) },
-                                    onCheck = { viewModel.markDone(item.id) },
+                                    onCheck = { viewModel.toggleDone(item.id) },
                                 )
                             }
                         }
@@ -249,7 +249,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                     item = item,
                                     zone = zone,
                                     onClick = { viewModel.openDetail(item.id) },
-                                    onCheck = { viewModel.markDone(item.id) },
+                                    onCheck = { viewModel.toggleDone(item.id) },
                                 )
                             }
                         }
@@ -260,7 +260,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                     item = item,
                                     zone = zone,
                                     onClick = { viewModel.openDetail(item.id) },
-                                    onCheck = { viewModel.markDone(item.id) },
+                                    onCheck = { viewModel.toggleDone(item.id) },
                                 )
                             }
                         }
@@ -270,7 +270,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                     item = item,
                                     zone = zone,
                                     onClick = { viewModel.openDetail(item.id) },
-                                    onCheck = { },
+                                    onCheck = { viewModel.toggleDone(item.id) },
                                 )
                             }
                         }
@@ -285,7 +285,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                         item = item,
                                         zone = zone,
                                         onClick = { viewModel.openDetail(item.id) },
-                                        onCheck = { viewModel.markDone(item.id) },
+                                        onCheck = { viewModel.toggleDone(item.id) },
                                     )
                                 }
                             }
@@ -300,7 +300,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                         item = item,
                                         zone = zone,
                                         onClick = { viewModel.openDetail(item.id) },
-                                        onCheck = { viewModel.markDone(item.id) },
+                                        onCheck = { viewModel.toggleDone(item.id) },
                                     )
                                 }
                             }
@@ -315,7 +315,7 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                         item = item,
                                         zone = zone,
                                         onClick = { viewModel.openDetail(item.id) },
-                                        onCheck = { viewModel.markDone(item.id) },
+                                        onCheck = { viewModel.toggleDone(item.id) },
                                     )
                                 }
                             }
@@ -325,12 +325,12 @@ fun TugasListScreen(viewModel: TugasViewModel) {
                                 item {
                                     SectionHeader(title = "SELESAI", count = completedTasks.size, color = ForfhColors.StatusSelesaiFg)
                                 }
-                                items(completedTasks.take(5), key = { it.id }) { item ->
+                                items(completedTasks.take(10), key = { it.id }) { item ->
                                     TodoistTaskItem(
                                         item = item,
                                         zone = zone,
                                         onClick = { viewModel.openDetail(item.id) },
-                                        onCheck = { },
+                                        onCheck = { viewModel.toggleDone(item.id) },
                                     )
                                 }
                             }
@@ -414,16 +414,17 @@ private fun TodoistTaskItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Todoist Circular Checkbox with Priority Ring
+            // Todoist Circular Checkbox with Priority Ring (supports check & uncheck)
             Box(
                 modifier = Modifier
                     .size(22.dp)
                     .clip(CircleShape)
-                    .clickable(enabled = !isDone) {
-                        isChecking = true
+                    .clickable {
+                        isChecking = !isDone
                         scope.launch {
-                            delay(250)
+                            delay(180)
                             onCheck()
+                            isChecking = false
                         }
                     },
                 contentAlignment = Alignment.Center,
