@@ -11,11 +11,12 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionStartActivity
 import androidx.glance.action.actionParametersOf
+import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -42,10 +43,10 @@ import com.aryariap.forfh.ui.UiFormat
 import com.aryariap.forfh.ui.theme.DarkScheme
 import com.aryariap.forfh.ui.theme.ForfhColors
 import com.aryariap.forfh.ui.theme.LightScheme
+import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.ZoneId
 
 /** Ukuran compact: 150x110, isian vertikal tanpa header tanggal. */
 private val compactSize = DpSize(150.dp, 110.dp)
@@ -57,7 +58,6 @@ private val WIB: ZoneId = ZoneId.of("Asia/Jakarta")
 
 /**
  * Widget tugas: 3 tugas terdekat + status sync, dibaca dari Room tiap render.
- * Trigger: refreshAll (WidgetUpdater) + updatePeriodMillis 30 mnt + render sistem.
  * Tap seluruh widget ke MainActivity tab 1 (TugasScreen).
  */
 class TasksWidget : GlanceAppWidget() {
@@ -113,22 +113,48 @@ private fun TasksWidgetCompactContent(data: TasksWidgetData) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.widgetBackground)
+            .cornerRadius(16.dp)
+            .background(GlanceTheme.colors.surface)
             .clickable(actionStartActivity<MainActivity>(parameters = actionParametersOf(ActionParameters.Key<Int>("open_tab").to(1))))
-            .padding(10.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.Top,
         horizontalAlignment = Alignment.Start,
     ) {
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "TUGAS AKTIF",
+                style = TextStyle(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ColorProvider(ForfhColors.PriorityP2),
+                ),
+                maxLines = 1,
+            )
+            Spacer(GlanceModifier.defaultWeight())
+            Text(
+                text = "${data.tasks.size}",
+                style = TextStyle(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ColorProvider(ForfhColors.TextMuted),
+                ),
+                maxLines = 1,
+            )
+        }
+        Spacer(GlanceModifier.height(6.dp))
         if (data.tasks.isEmpty()) {
             Text(
-                text = "Tidak ada tugas aktif",
+                text = "Tidak ada tugas aktif 🎉",
                 style = TextStyle(
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     color = GlanceTheme.colors.onSurfaceVariant,
                 ),
             )
         } else {
-            data.tasks.take(3).forEach { task ->
+            data.tasks.take(2).forEach { task ->
                 CompactTaskRow(task)
                 Spacer(GlanceModifier.height(4.dp))
             }
@@ -137,8 +163,8 @@ private fun TasksWidgetCompactContent(data: TasksWidgetData) {
         Text(
             text = syncStatusLine(data.lastSyncAt, data.lastSyncStatus, System.currentTimeMillis()),
             style = TextStyle(
-                fontSize = 11.sp,
-                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = 10.sp,
+                color = ColorProvider(ForfhColors.TextMuted),
             ),
             maxLines = 1,
         )
@@ -155,6 +181,7 @@ private fun CompactTaskRow(task: TaskEntity) {
         Box(
             modifier = GlanceModifier
                 .size(6.dp)
+                .cornerRadius(3.dp)
                 .background(dotColor),
         ) {}
         Spacer(GlanceModifier.width(5.dp))
@@ -167,17 +194,6 @@ private fun CompactTaskRow(task: TaskEntity) {
             ),
             maxLines = 1,
         )
-        Spacer(GlanceModifier.defaultWeight())
-        task.dueAt?.let { dueAt ->
-            Text(
-                text = formatWidgetDeadline(dueAt),
-                style = TextStyle(
-                    fontSize = 11.sp,
-                    color = ColorProvider(ForfhColors.TextMuted),
-                ),
-                maxLines = 1,
-            )
-        }
     }
 }
 
@@ -186,9 +202,10 @@ private fun TasksWidgetStandardContent(data: TasksWidgetData) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.widgetBackground)
+            .cornerRadius(16.dp)
+            .background(GlanceTheme.colors.surface)
             .clickable(actionStartActivity<MainActivity>(parameters = actionParametersOf(ActionParameters.Key<Int>("open_tab").to(1))))
-            .padding(12.dp),
+            .padding(14.dp),
         verticalAlignment = Alignment.Top,
         horizontalAlignment = Alignment.Start,
     ) {
@@ -199,7 +216,7 @@ private fun TasksWidgetStandardContent(data: TasksWidgetData) {
             Text(
                 text = "DEADLINE TUGAS",
                 style = TextStyle(
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = ColorProvider(ForfhColors.PriorityP2),
                 ),
@@ -255,6 +272,7 @@ private fun StandardTaskRow(task: TaskEntity) {
         Box(
             modifier = GlanceModifier
                 .size(7.dp)
+                .cornerRadius(3.5.dp)
                 .background(priorityColor),
         ) {}
         Spacer(GlanceModifier.width(7.dp))
@@ -300,14 +318,5 @@ private fun taskPriorityColor(priority: String?): ColorProvider = when (priority
     "medium", "p3", "3" -> ColorProvider(ForfhColors.PriorityP3)
     else -> ColorProvider(ForfhColors.PriorityP4)
 }
-
-/**
- * Warna dot course hex "RRGGBB" -> ColorProvider; fallback accent DNA ForFH.
- */
-private fun taskDotColor(hex: String?): ColorProvider =
-    runCatching {
-        hex?.let { ColorProvider(Color(android.graphics.Color.parseColor(it))) }
-    }.getOrNull()
-        ?: ColorProvider(ForfhColors.Accent)
 
 private const val TAG = "TasksWidget"

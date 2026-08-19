@@ -12,11 +12,12 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionStartActivity
 import androidx.glance.action.actionParametersOf
+import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -45,13 +46,13 @@ import com.aryariap.forfh.ui.jadwal.nextUp
 import com.aryariap.forfh.ui.theme.DarkScheme
 import com.aryariap.forfh.ui.theme.ForfhColors
 import com.aryariap.forfh.ui.theme.LightScheme
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Ukuran compact (~2x2 sel): konten minimal, cocok dengan minWidth/minHeight di XML. */
 private val compactSize = DpSize(150.dp, 110.dp)
@@ -60,15 +61,8 @@ private val compactSize = DpSize(150.dp, 110.dp)
 private val standardSize = DpSize(260.dp, 110.dp)
 
 /**
- * Widget jadwal ForFH: kelas berikutnya + alarm berikutnya, dibaca dari Room tiap render
- * (trigger: refreshAll dari 4 titik update + updatePeriodMillis 30 mnt + render sistem saat
- * widget ditambah/diubah ukuran). Tap seluruh widget → MainActivity.
- *
- * Responsive (SizeMode.Responsive, R-03): compact 150x110 = esensial saja (nama + jam + alarm,
- * tanpa header/bar warna: lebar 126dp tidak muat keduanya tanpa clip, akar bug lama "FHK25
- * terpotong"); standard 260x110 = header label + tanggal WIB, nama lebih besar, baris
- * "HH:mm · Alarm: HH:mm", bar warna course (motif identitas KuliahCard). Sistem memilih
- * ukuran terdekat lalu menskalakan render ke ukuran launcher aktual.
+ * Widget jadwal ForFH: kelas berikutnya + alarm berikutnya, dibaca dari Room tiap render.
+ * Tap seluruh widget -> MainActivity (Tab Kalender).
  */
 class ForfhWidget : GlanceAppWidget() {
 
@@ -76,10 +70,6 @@ class ForfhWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val app = context.applicationContext as ForfhApp
-        // Room blocking → Dispatchers.Default (global constraint). Baca gagal (jarang) → fallback
-        // placeholder jujur (R-27 error state): widget tidak pernah menampilkan data yang tidak
-        // berasal dari Room. CancellationException (coroutine dibatalkan) di-rethrow — menelan
-        // pembatalan di sini membuat status pembatalan hilang dari struktur supervisi.
         val data = withContext(Dispatchers.Default) {
             try {
                 val now = ZonedDateTime.now(WIB)
@@ -110,25 +100,11 @@ private data class WidgetData(
     val nextAlarm: ScheduledAlarmEntity?,
 )
 
-/**
- * Tema widget = skema warna app (ForFH DNA, ui/theme/Theme.kt) yang diterjemahkan
- * ke token Glance; ikut mode gelap sistem otomatis (ColorProviders light/dark).
- */
 @Composable
 private fun ForfhWidgetTheme(content: @Composable () -> Unit) {
     GlanceTheme(colors = ColorProviders(light = LightScheme, dark = DarkScheme), content = content)
 }
 
-/**
- * Isi widget, responsif terhadap LocalSize.current (salah satu dari set sizeMode, ukuran
- * render Glance, bukan ukuran launcher). Konten dirancang fillMaxSize di dalam ukuran tsb
- * agar penskalaan sistem ke ukuran launcher seragam. Standard ≥ 260dp, sisanya compact.
- *
- * Empty state jujur (R-38/R-27): tanpa kelas berikutnya → "Belum ada data" (bukan angka/data
- * palsu); tanpa alarm → baris alarm disembunyikan (kartu app juga hanya menampilkan baris
- * alarm saat ada data). Angka dan nama hanya dari Room (R-17). Label tanpa em dash (R-02):
- * hanya ":" dan "·".
- */
 @Composable
 fun ForfhWidgetContent(
     now: ZonedDateTime,
@@ -142,76 +118,95 @@ fun ForfhWidgetContent(
     }
 }
 
-/**
- * Compact (150x110, padding 12 → 126x86): esensial saja: nama course (kode, fallback nama
- * lengkap) + jam mulai inline satu teks, baris "Alarm: HH:mm" saat ada alarm. Nama MEMBUNGKUS
- * penuh (tanpa maxLines: Glance 1.1.1 tidak punya ellipsis, maxLines hanya meng-clip) dan font
- * mengecil bertahap agar perkiraan tinggi tidak pernah melebihi budget (lihat
- * compactNameFontSize), inilah perbaikan bug lama yang memotong "FHK25" di ukuran kecil.
- * Konten di-center vertikal: blok info pendek di widget tinggi tetap seimbang (bukan
- * dead-space di bawah). Teks esensial onSurface, baris sekunder onSurfaceVariant: hierarki
- * sama dengan kartu app.
- */
 @Composable
 private fun CompactContent(
     nextClass: Pair<ScheduleEntity, ZonedDateTime>?,
     nextAlarm: ScheduledAlarmEntity?,
 ) {
-    Column(
+    Row(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.widgetBackground)
-            // clickable SEBELUM padding: seluruh footprint widget (termasuk tepi) dapat di-tap,
-            // bukan hanya area dalam padding: kontras teks baru sah karena ada permukaan nyata
-            // (widgetBackground = background skema app, light #FAF9F7 / dark gelap, R-25).
+            .cornerRadius(16.dp)
+            .background(GlanceTheme.colors.surface)
             .clickable(actionStartActivity<MainActivity>(parameters = actionParametersOf(ActionParameters.Key<Int>("open_tab").to(0))))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalAlignment = Alignment.Start,
     ) {
         if (nextClass != null) {
-            val fullText =
-                "${nextClass.first.courseCode ?: nextClass.first.courseName} (${UiFormat.timeOf(nextClass.second)})"
-            Text(
-                text = fullText,
-                style = TextStyle(
-                    fontSize = compactNameFontSize(fullText.length),
-                    fontWeight = FontWeight.Medium,
-                    color = GlanceTheme.colors.onSurface,
-                ),
-            )
-        } else {
-            Text(
-                text = "Belum ada data",
-                style = TextStyle(
-                    fontSize = 14.sp,
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                ),
-            )
+            Box(
+                modifier = GlanceModifier
+                    .width(3.5.dp)
+                    .fillMaxHeight()
+                    .cornerRadius(2.dp)
+                    .background(widgetCourseColor(nextClass.first.courseColor)),
+            ) {}
+            Spacer(GlanceModifier.width(9.dp))
         }
-        if (nextAlarm != null) {
-            Spacer(GlanceModifier.height(4.dp))
-            Text(
-                text = "Alarm: ${UiFormat.timeOf(nextAlarm.triggerAtMillis, WIB)}",
-                style = TextStyle(
-                    fontSize = 13.sp,
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                ),
-                maxLines = 1, // "Alarm: HH:mm" format tetap, aman satu baris
-            )
+
+        Column(
+            modifier = GlanceModifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.Start,
+        ) {
+            if (nextClass != null) {
+                val course = nextClass.first
+                Text(
+                    text = course.courseName,
+                    style = TextStyle(
+                        fontSize = compactNameFontSize(course.courseName.length),
+                        fontWeight = FontWeight.Bold,
+                        color = GlanceTheme.colors.onSurface,
+                    ),
+                    maxLines = 2,
+                )
+                Spacer(GlanceModifier.height(3.dp))
+                val timeAndRoom = buildString {
+                    append(UiFormat.timeOf(nextClass.second))
+                    course.room?.let { append(" · R. $it") }
+                    course.courseCode?.let { append(" · $it") }
+                }
+                Text(
+                    text = timeAndRoom,
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                    ),
+                    maxLines = 1,
+                )
+                if (nextAlarm != null) {
+                    Spacer(GlanceModifier.height(2.dp))
+                    Text(
+                        text = "Alarm: ${UiFormat.timeOf(nextAlarm.triggerAtMillis, WIB)}",
+                        style = TextStyle(
+                            fontSize = 11.sp,
+                            color = ColorProvider(ForfhColors.LinearIndigo),
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                    )
+                }
+            } else {
+                Text(
+                    text = "Tidak ada kuliah",
+                    style = TextStyle(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GlanceTheme.colors.onSurface,
+                    ),
+                )
+                Spacer(GlanceModifier.height(2.dp))
+                Text(
+                    text = "Semua jadwal selesai",
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                    ),
+                )
+            }
         }
     }
 }
 
-/**
- * Standard (260x110, padding 14 → 232x82): komposisi sama dengan KuliahCard (JadwalScreen):
- * bar warna course 4dp di kiri (identitas visual course) + blok teks. Header "Berikutnya" +
- * tanggal WIB ("Sen, 17 Agu", widgetDate) memberi konteks hari (kelas bisa esok lusa), nama
- * course lebih besar, baris meta "HH:mm · Alarm: HH:mm". Baris alarm mengikuti pola app:
- * hanya tampil saat ada alarm; tanpa alarm baris meta tetap menampilkan jam mulai. Nama
- * membungkus + font mengecil sesuai budget (standardNameFontSize) → tidak pernah ter-clip.
- * Satu aksen disengaja = bar warna course (antislop: satu focal accent, bukan di mana-mana).
- */
 @Composable
 private fun StandardContent(
     now: ZonedDateTime,
@@ -221,7 +216,8 @@ private fun StandardContent(
     Row(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.widgetBackground)
+            .cornerRadius(16.dp)
+            .background(GlanceTheme.colors.surface)
             .clickable(actionStartActivity<MainActivity>(parameters = actionParametersOf(ActionParameters.Key<Int>("open_tab").to(0))))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -231,6 +227,7 @@ private fun StandardContent(
                 modifier = GlanceModifier
                     .width(4.dp)
                     .fillMaxHeight()
+                    .cornerRadius(2.dp)
                     .background(widgetCourseColor(nextClass.first.courseColor)),
             ) {}
             Spacer(GlanceModifier.width(12.dp))
@@ -240,6 +237,7 @@ private fun StandardContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.Start,
         ) {
+            // Header / Eyebrow row
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -247,7 +245,7 @@ private fun StandardContent(
                 Text(
                     text = "KULIAH BERIKUTNYA",
                     style = TextStyle(
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = ColorProvider(ForfhColors.LinearIndigo),
                     ),
@@ -262,7 +260,7 @@ private fun StandardContent(
                 Text(
                     text = rightHeader,
                     style = TextStyle(
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = ColorProvider(ForfhColors.TextMuted),
                     ),
@@ -270,41 +268,55 @@ private fun StandardContent(
                 )
             }
             Spacer(GlanceModifier.height(4.dp))
+
+            // Main Title (Course Name)
             if (nextClass != null) {
-                val name = nextClass.first.courseCode ?: nextClass.first.courseName
+                val course = nextClass.first
                 Text(
-                    text = name,
+                    text = course.courseName,
                     style = TextStyle(
-                        fontSize = standardNameFontSize(name.length),
+                        fontSize = standardNameFontSize(course.courseName.length),
                         fontWeight = FontWeight.Bold,
                         color = GlanceTheme.colors.onSurface,
                     ),
+                    maxLines = 2,
+                )
+
+                Spacer(GlanceModifier.height(3.dp))
+
+                // Secondary Info Row (Time, Room, Course Code, Alarm)
+                val metaText = buildString {
+                    append("${course.startTime} - ${course.endTime} WIB")
+                    course.room?.let { append(" · R. $it") }
+                    course.courseCode?.let { append(" · $it") }
+                    if (nextAlarm != null) {
+                        append(" · 🔔 ${UiFormat.timeOf(nextAlarm.triggerAtMillis, WIB)}")
+                    }
+                }
+                Text(
+                    text = metaText,
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                    ),
+                    maxLines = 1,
                 )
             } else {
                 Text(
                     text = "Tidak ada kuliah lagi",
                     style = TextStyle(
                         fontSize = 14.sp,
-                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        color = GlanceTheme.colors.onSurface,
                     ),
                 )
-            }
-            val meta = buildString {
-                nextClass?.let {
-                    append(UiFormat.timeOf(it.second))
-                    it.first.room?.let { room -> append(" · R. $room") }
-                }
-                if (nextAlarm != null) {
-                    if (nextClass != null) append(" · ")
-                    append("Alarm: ")
-                    append(UiFormat.timeOf(nextAlarm.triggerAtMillis, WIB))
-                }
-            }
-            if (meta.isNotEmpty()) {
                 Spacer(GlanceModifier.height(3.dp))
                 Text(
-                    text = meta,
-                    style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant),
+                    text = "Semua jadwal kuliah minggu ini telah selesai",
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                    ),
                     maxLines = 1,
                 )
             }
@@ -313,51 +325,32 @@ private fun StandardContent(
 }
 
 /**
- * Ukuran font nama di compact. Glance 1.1.1 tanpa text measurement dan ellipsis, jadi
- * perkiraan konservatif: lebar rata-rata karakter ≈ 0.55em, line height ≈ 1.25x fontSize.
- * Budget compact: tinggi 86dp (110 - padding 12x2) dikurangi baris alarm (13sp ≈ 16.25dp)
- * + gap 4dp → nama ≤ 65.75dp. Tiap cabang memastikan baris_terestimasi x 1.25 x fontSize
- * ≤ 65.75 (karakter per baris di lebar 126dp).
+ * Ukuran font nama di compact.
  */
 internal fun compactNameFontSize(fullTextLength: Int): TextUnit = when {
-    fullTextLength <= 45 -> 15.sp // 3 baris x 18.75dp = 56.25 ✓ (15 char/baris @15sp)
-    fullTextLength <= 68 -> 13.sp // 4 baris x 16.25dp = 65 ✓ (17 char/baris @13sp)
-    else -> 12.sp                 // 4 baris x 15dp = 60 ✓ (19 char/baris @12sp); nama >76 char
-    // (5 baris) ter-clip di ujung ekstrem: batas API Glance, nama course >76 char praktis tak ada
+    fullTextLength <= 45 -> 15.sp
+    fullTextLength <= 68 -> 13.sp
+    else -> 12.sp
 }
 
 /**
- * Ukuran font nama di standard. Budget: tinggi 82dp (110 - padding 14x2) dikurangi header
- * (12sp ≈ 15dp) + gap 4+2dp + meta (13sp ≈ 16.25dp) → nama ≤ 44.75dp (kasus terpadat dengan
- * alarm; tanpa alarm budget lebih longgar, aturan tetap aman). Karakter per baris di lebar
- * 232dp. Ukuran base 17sp sengaja di atas compact (15sp): nama adalah focal point standard.
+ * Ukuran font nama di standard.
  */
 internal fun standardNameFontSize(nameLength: Int): TextUnit = when {
-    nameLength <= 48 -> 17.sp // 2 baris x 21.25dp = 42.5 ✓ (24 char/baris @17sp)
-    nameLength <= 56 -> 15.sp // 2 baris x 18.75dp = 37.5 ✓ (28 char/baris)
-    nameLength <= 64 -> 13.sp // 2 baris x 16.25dp = 32.5 ✓ (32 char/baris)
-    nameLength <= 70 -> 12.sp // 2 baris x 15dp = 30 ✓ (35 char/baris)
-    else -> 11.sp             // 3 baris x 13.75dp = 41.25 ✓ (38 char/baris @11sp); nama >114
-    // char ter-clip di ujung ekstrem: batas API Glance, nama course >114 char praktis tak ada
+    nameLength <= 48 -> 17.sp
+    nameLength <= 56 -> 15.sp
+    nameLength <= 64 -> 13.sp
+    nameLength <= 70 -> 12.sp
+    else -> 11.sp
 }
 
-/**
- * Tanggal header standard, format "Sen, 17 Agu" (WIB, lokale id, konsisten dengan label
- * app). UiFormat tidak punya formatter tanggal pendek, jadi helper kecil lokal.
- */
-private val widgetDateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, d MMM", Locale("id", "ID"))
+private val widgetDateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, d MMM", Locale.forLanguageTag("id-ID"))
 
 private fun widgetDate(now: ZonedDateTime): String = now.format(widgetDateFmt)
 
-/**
- * Warna course hex "RRGGBB" → ColorProvider; fallback accent DNA ForFH. Duplikat kecil dari
- * courseColor() di ui/jadwal/JadwalScreen.kt (private di sana; reuse berarti menyentuh file
- * lain, dihindari per batasan tugas). Perilaku sama persis: parse gagal → ForfhColors.Accent
- * di kedua mode, persis seperti kartu app.
- */
 private fun widgetCourseColor(hex: String): ColorProvider =
     runCatching { ColorProvider(Color(android.graphics.Color.parseColor(hex))) }
-        .getOrDefault(ColorProvider(ForfhColors.Accent))
+        .getOrDefault(ColorProvider(ForfhColors.LinearIndigo))
 
 private val WIB: ZoneId = ZoneId.of("Asia/Jakarta")
 
