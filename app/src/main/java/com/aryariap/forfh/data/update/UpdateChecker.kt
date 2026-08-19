@@ -34,7 +34,7 @@ object UpdateChecker {
         "https://api.github.com/repos/algojogacor/ForFH-Android/releases/latest"
 
     // Default download destination on the companion web portal / releases
-    const val DOWNLOAD_PAGE_URL = "https://forfh.web.id"
+    const val DOWNLOAD_PAGE_URL = "https://usual-olwen-algojogacorbgt-a2be655b.koyeb.app/unduh"
 
     private val json = Json { ignoreUnknownKeys = true }
     private val client = OkHttpClient.Builder().build()
@@ -59,7 +59,7 @@ object UpdateChecker {
                     hasUpdate = isNewer,
                     releaseTitle = release.name ?: release.tagName,
                     releaseNotes = release.body,
-                    downloadUrl = release.htmlUrl ?: DOWNLOAD_PAGE_URL,
+                    downloadUrl = DOWNLOAD_PAGE_URL,
                     publishedAt = release.publishedAt,
                 )
             }
