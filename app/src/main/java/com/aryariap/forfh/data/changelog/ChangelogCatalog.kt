@@ -20,6 +20,17 @@ object ChangelogCatalog {
     // Static fallback list to ensure zero-latency & deterministic data availability
     private val staticEntries = listOf(
         ChangelogEntry(
+            version = "2.5.0",
+            versionCode = 7,
+            date = "19 Agustus 2026",
+            title = "Pembaruan Layar Masuk & Perapihan Pengaturan",
+            highlights = listOf(
+                "Desain Baru Layar Masuk: Tampilan modern dengan logo resmi ForFH, kartu login terangkat, dan tombol intip password.",
+                "Perbaikan Tampilan Pengaturan: Perapihan status pembaruan dan tombol cek update agar tampil rapi dan nyaman dibaca.",
+                "Optimalisasi Komponen Tombol: Fleksibilitas tata letak tombol di seluruh layar aplikasi.",
+            ),
+        ),
+        ChangelogEntry(
             version = "2.4.0",
             versionCode = 6,
             date = "19 Agustus 2026",

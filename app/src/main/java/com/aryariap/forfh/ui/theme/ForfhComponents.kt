@@ -189,23 +189,21 @@ fun ForfhMetric(
 fun PrimaryButton(
     text: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true,
-    height: Dp = 50.dp,
+    height: Dp = 48.dp,
     icon: (@Composable () -> Unit)? = null,
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
+        modifier = modifier.height(height),
         enabled = enabled,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+            containerColor = ForfhColors.LinearIndigo,
+            contentColor = Color.White,
+            disabledContainerColor = ForfhColors.LinearIndigo.copy(alpha = 0.4f),
+            disabledContentColor = Color.White.copy(alpha = 0.6f),
         ),
     ) {
         Row(
@@ -217,7 +215,11 @@ fun PrimaryButton(
                 it()
                 Spacer(Modifier.width(8.dp))
             }
-            Text(text = text, style = MaterialTheme.typography.labelLarge)
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
@@ -226,23 +228,23 @@ fun PrimaryButton(
 fun TonalButton(
     text: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true,
-    height: Dp = 50.dp,
+    height: Dp = 44.dp,
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
+        modifier = modifier.height(height),
         enabled = enabled,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            containerColor = ForfhColors.SurfaceSecondary,
+            contentColor = ForfhColors.TextPrimary,
+            disabledContainerColor = ForfhColors.SurfaceSecondary.copy(alpha = 0.5f),
+            disabledContentColor = ForfhColors.TextMuted,
         ),
     ) {
-        Text(text = text, style = MaterialTheme.typography.labelLarge)
+        Text(text = text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -250,23 +252,22 @@ fun TonalButton(
 fun OutlineButton(
     text: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true,
-    height: Dp = 50.dp,
+    height: Dp = 44.dp,
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
+        modifier = modifier.height(height),
         enabled = enabled,
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, ForfhColors.BorderStrong),
         colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.onSurface,
+            contentColor = ForfhColors.TextPrimary,
+            disabledContentColor = ForfhColors.TextMuted,
         ),
     ) {
-        Text(text = text, style = MaterialTheme.typography.labelLarge)
+        Text(text = text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
     }
 }
 

@@ -11,7 +11,8 @@ Keputusan pemilik repo (2026-08-17): branch versi (`feat/v11`, `feat/v12`, dst.)
 | feat/v21 | 2.1.0 | 4 | 18 Agu 2026 | Redesain Total Linear OLED dark mode, Todoist stream, link HEBAT e-learning |
 | feat/v22 | 2.2.0 | 4 | 18 Agu 2026 | Kalender lengkap 3 mode (Hari Ini, Seminggu, Bulan), multi-dot indicator, filter kategori |
 | v2.3.0 | 2.3.0 | 5 | 19 Agu 2026 | Ikon baru minimalis, widget course name & smart room, uncheck task, in-app changelog & update checker |
-| v2.4.0 (main) | 2.4.0 | 6 | 19 Agu 2026 | Pratinjau changelog online GitHub di Pengaturan, portal unduh resmi Paper & Ink (/unduh), rilis aset APK |
+| v2.4.0 | 2.4.0 | 6 | 19 Agu 2026 | Pratinjau changelog online GitHub di Pengaturan, portal unduh resmi Paper & Ink (/unduh), rilis aset APK |
+| v2.5.0 (main) | 2.5.0 | 7 | 19 Agu 2026 | Redesain LoginScreen resmi, perbaikan layout Status Pembaruan horizontal, tombol responsif |
 
 Cara downgrade (contoh, ke v1.1.0):
 

@@ -9,40 +9,40 @@ class UpdateCheckerTest {
 
     @Test
     fun `remote version with higher minor is newer`() {
-        assertTrue(UpdateChecker.isNewerVersion("v2.5.0", "2.4.0"))
-        assertTrue(UpdateChecker.isNewerVersion("2.5.0", "2.4.0"))
+        assertTrue(UpdateChecker.isNewerVersion("v2.6.0", "2.5.0"))
+        assertTrue(UpdateChecker.isNewerVersion("2.6.0", "2.5.0"))
     }
 
     @Test
     fun `remote version with higher patch is newer`() {
-        assertTrue(UpdateChecker.isNewerVersion("v2.4.1", "2.4.0"))
+        assertTrue(UpdateChecker.isNewerVersion("v2.5.1", "2.5.0"))
     }
 
     @Test
     fun `remote version with higher major is newer`() {
-        assertTrue(UpdateChecker.isNewerVersion("v3.0.0", "2.4.0"))
+        assertTrue(UpdateChecker.isNewerVersion("v3.0.0", "2.5.0"))
     }
 
     @Test
     fun `same version is not newer`() {
-        assertFalse(UpdateChecker.isNewerVersion("v2.4.0", "2.4.0"))
-        assertFalse(UpdateChecker.isNewerVersion("2.4.0", "2.4.0"))
+        assertFalse(UpdateChecker.isNewerVersion("v2.5.0", "2.5.0"))
+        assertFalse(UpdateChecker.isNewerVersion("2.5.0", "2.5.0"))
     }
 
     @Test
     fun `older remote version is not newer`() {
-        assertFalse(UpdateChecker.isNewerVersion("v2.3.0", "2.4.0"))
-        assertFalse(UpdateChecker.isNewerVersion("v1.9.9", "2.4.0"))
+        assertFalse(UpdateChecker.isNewerVersion("v2.4.0", "2.5.0"))
+        assertFalse(UpdateChecker.isNewerVersion("v1.9.9", "2.5.0"))
     }
 
     @Test
     fun `parseReleaseHighlights extracts clean bullet points from markdown`() {
         val markdown = """
-            # Release v2.4.0
+            # Release v2.5.0
             Apa yang baru:
-            - **Pratinjau Online:** Intip daftar perubahan langsung di app.
-            - `Halaman Unduh`: Desain Paper & Ink baru.
-            * Unduhan APK langsung aktif tanpa kendala.
+            - **Desain Layar Masuk:** Tampilan modern dengan logo resmi ForFH.
+            - `Perbaikan Pengaturan`: Layout status pembaruan rapi horizontal.
+            * Komponen tombol responsif.
             
             ---
             Nikmati pembaruan terbaru!
@@ -50,9 +50,9 @@ class UpdateCheckerTest {
 
         val highlights = UpdateChecker.parseReleaseHighlights(markdown)
         assertEquals(3, highlights.size)
-        assertEquals("Pratinjau Online: Intip daftar perubahan langsung di app.", highlights[0])
-        assertEquals("Halaman Unduh: Desain Paper & Ink baru.", highlights[1])
-        assertEquals("Unduhan APK langsung aktif tanpa kendala.", highlights[2])
+        assertEquals("Desain Layar Masuk: Tampilan modern dengan logo resmi ForFH.", highlights[0])
+        assertEquals("Perbaikan Pengaturan: Layout status pembaruan rapi horizontal.", highlights[1])
+        assertEquals("Komponen tombol responsif.", highlights[2])
     }
 
     @Test

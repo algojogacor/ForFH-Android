@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -462,11 +463,16 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 12.dp),
+                            ) {
                                 Text(
                                     text = "Status Pembaruan",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = ForfhColors.TextPrimary,
+                                    fontWeight = FontWeight.Medium,
                                 )
                                 Text(
                                     text = if (state.isCheckingUpdate) "Memeriksa versi terbaru..."
@@ -480,6 +486,7 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
                             OutlineButton(
                                 text = if (state.isCheckingUpdate) "Memeriksa..." else "Cek Update",
                                 onClick = { viewModel.checkForUpdates() },
+                                modifier = Modifier.wrapContentWidth(),
                                 height = 36.dp,
                                 enabled = !state.isCheckingUpdate,
                             )
