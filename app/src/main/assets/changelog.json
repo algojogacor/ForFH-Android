@@ -1,5 +1,16 @@
 [
   {
+    "version": "2.4.0",
+    "versionCode": 6,
+    "date": "19 Agustus 2026",
+    "title": "Pratinjau Pembaruan Online & Halaman Unduh Resmi",
+    "highlights": [
+      "Pratinjau Catatan Rilis Online: Intip langsung daftar poin perubahan versi baru dari GitHub Releases di layar Pengaturan sebelum memutuskan update.",
+      "Halaman Unduh Resmi (/unduh): Portal unduhan APK dengan tampilan Paper & Ink yang selaras dengan web ForFH, link unduh langsung, dan panduan instalasi.",
+      "Perbaikan Distribusi APK: Penataan aset file instalasi rilis GitHub untuk memastikan tautan unduhan langsung aktif tanpa kendala 404."
+    ]
+  },
+  {
     "version": "2.3.0",
     "versionCode": 5,
     "date": "19 Agustus 2026",

@@ -24,6 +24,7 @@ data class AppUpdateInfo(
     val hasUpdate: Boolean,
     val releaseTitle: String?,
     val releaseNotes: String?,
+    val releaseHighlights: List<String> = emptyList(),
     val downloadUrl: String,
     val publishedAt: String?,
 )
@@ -52,6 +53,7 @@ object UpdateChecker {
                 val body = response.body?.string() ?: return@withContext null
                 val release = json.decodeFromString<GitHubReleaseDto>(body)
                 val isNewer = isNewerVersion(release.tagName, BuildConfig.VERSION_NAME)
+                val highlights = parseReleaseHighlights(release.body)
 
                 AppUpdateInfo(
                     latestVersion = release.tagName.removePrefix("v"),
@@ -59,6 +61,7 @@ object UpdateChecker {
                     hasUpdate = isNewer,
                     releaseTitle = release.name ?: release.tagName,
                     releaseNotes = release.body,
+                    releaseHighlights = highlights,
                     downloadUrl = DOWNLOAD_PAGE_URL,
                     publishedAt = release.publishedAt,
                 )
@@ -66,6 +69,27 @@ object UpdateChecker {
         } catch (_: Throwable) {
             null
         }
+    }
+
+    internal fun parseReleaseHighlights(body: String?): List<String> {
+        if (body.isNullOrBlank()) return emptyList()
+        val lines = body.lines().map { it.trim() }.filter { it.isNotEmpty() }
+
+        val bulletLines = lines.filter { line ->
+            line.startsWith("-") || line.startsWith("*") || line.startsWith("•") ||
+            line.matches(Regex("^\\d+\\..*"))
+        }
+
+        val targetLines = if (bulletLines.isNotEmpty()) bulletLines else lines.filter { line ->
+            !line.startsWith("#") && !line.startsWith("---") && !line.startsWith("==")
+        }
+
+        return targetLines.map { line ->
+            line.replace(Regex("^[\\-*•\\d+\\.]+\\s*"), "")
+                .replace("**", "")
+                .replace("`", "")
+                .trim()
+        }.filter { it.isNotEmpty() }
     }
 
     internal fun isNewerVersion(remoteTag: String, localVersion: String): Boolean {

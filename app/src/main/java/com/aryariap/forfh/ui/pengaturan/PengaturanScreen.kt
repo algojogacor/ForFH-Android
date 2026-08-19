@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -18,11 +19,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
@@ -344,18 +348,20 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
                     // Update Status Banner / Row
                     val updateInfo = state.updateInfo
                     if (updateInfo != null && updateInfo.hasUpdate) {
+                        var expandedNotes by rememberSaveable { mutableStateOf(false) }
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(ForfhColors.StatusProsesBg)
                                 .border(1.dp, ForfhColors.StatusProsesFg.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             Row(
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(
                                     text = "Update Tersedia: v${updateInfo.latestVersion}",
@@ -363,21 +369,90 @@ fun PengaturanScreen(viewModel: PengaturanViewModel) {
                                     color = ForfhColors.StatusProsesFg,
                                     fontWeight = FontWeight.Bold,
                                 )
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = ForfhColors.StatusProsesFg.copy(alpha = 0.15f),
+                                ) {
+                                    Text(
+                                        text = "BARU",
+                                        style = ForfhTypeExtras.MonoMeta,
+                                        color = ForfhColors.StatusProsesFg,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    )
+                                }
                             }
-                            updateInfo.releaseTitle?.let {
+
+                            updateInfo.releaseTitle?.let { title ->
                                 Text(
-                                    text = it,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = ForfhColors.TextSecondary,
+                                    text = title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = ForfhColors.TextPrimary,
+                                    fontWeight = FontWeight.SemiBold,
                                 )
                             }
+
+                            // Highlights from GitHub Release Notes
+                            val highlights = updateInfo.releaseHighlights
+                            if (highlights.isNotEmpty()) {
+                                val displayList = if (expandedNotes || highlights.size <= 3) highlights else highlights.take(3)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(ForfhColors.SurfaceSecondary)
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(
+                                        text = "Apa yang baru:",
+                                        style = ForfhTypeExtras.MonoMeta,
+                                        color = ForfhColors.TextMuted,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    for (item in displayList) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.Top,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            androidx.compose.foundation.layout.Box(
+                                                modifier = Modifier
+                                                    .padding(top = 6.dp)
+                                                    .size(4.dp)
+                                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                                    .background(ForfhColors.StatusProsesFg),
+                                            )
+                                            Text(
+                                                text = item,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = ForfhColors.TextSecondary,
+                                                lineHeight = 16.sp,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                    }
+                                    if (highlights.size > 3) {
+                                        Text(
+                                            text = if (expandedNotes) "Sembunyikan" else "Lihat ${highlights.size - 3} poin lainnya...",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = ForfhColors.LinearIndigo,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier
+                                                .clickable { expandedNotes = !expandedNotes }
+                                                .padding(top = 2.dp),
+                                        )
+                                    }
+                                }
+                            }
+
                             PrimaryButton(
                                 text = "Unduh Pembaruan",
                                 onClick = {
                                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(updateInfo.downloadUrl))
                                     context.startActivity(intent)
                                 },
-                                height = 38.dp,
+                                height = 40.dp,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

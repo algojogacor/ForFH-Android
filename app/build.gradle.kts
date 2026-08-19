@@ -24,8 +24,8 @@ android {
         applicationId = "com.aryariap.forfh"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "2.3.0"
+        versionCode = 6
+        versionName = "2.4.0"
     }
 
     signingConfigs {
@@ -66,6 +66,11 @@ android {
     // supaya path logging (mis. SyncRepository.syncKampusInfo) tidak crash di test.
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
 }
 

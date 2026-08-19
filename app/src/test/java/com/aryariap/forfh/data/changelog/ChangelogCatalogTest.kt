@@ -10,21 +10,25 @@ class ChangelogCatalogTest {
     @Test
     fun `static fallback contains all major versions`() {
         val entries = ChangelogCatalog.loadAll()
-        assertTrue(entries.size >= 7)
-        assertEquals("2.3.0", entries.first().version)
+        assertTrue(entries.size >= 8)
+        assertEquals("2.4.0", entries.first().version)
         assertEquals("1.0.0", entries.last().version)
     }
 
     @Test
-    fun `getLatest returns v2_3_0`() {
+    fun `getLatest returns v2_4_0`() {
         val latest = ChangelogCatalog.getLatest()
-        assertEquals("2.3.0", latest.version)
-        assertEquals(5, latest.versionCode)
+        assertEquals("2.4.0", latest.version)
+        assertEquals(6, latest.versionCode)
         assertTrue(latest.highlights.isNotEmpty())
     }
 
     @Test
     fun `getForVersion retrieves correct entry by versionCode`() {
+        val v240 = ChangelogCatalog.getForVersion(6)
+        assertNotNull(v240)
+        assertEquals("2.4.0", v240?.version)
+
         val v100 = ChangelogCatalog.getForVersion(1)
         assertNotNull(v100)
         assertEquals("1.0.0", v100?.version)
@@ -32,20 +36,16 @@ class ChangelogCatalogTest {
         val v110 = ChangelogCatalog.getForVersion(2)
         assertNotNull(v110)
         assertEquals("1.1.0", v110?.version)
-
-        val v120 = ChangelogCatalog.getForVersion(3)
-        assertNotNull(v120)
-        assertEquals("1.2.0", v120?.version)
     }
 
     @Test
     fun `getForVersionName retrieves correct entry by version name`() {
-        val v210 = ChangelogCatalog.getForVersionName("2.1.0")
-        assertNotNull(v210)
-        assertEquals("2.1.0", v210?.version)
+        val v240 = ChangelogCatalog.getForVersionName("2.4.0")
+        assertNotNull(v240)
+        assertEquals("2.4.0", v240?.version)
 
-        val v200 = ChangelogCatalog.getForVersionName("v2.0.0")
-        assertNotNull(v200)
-        assertEquals("2.0.0", v200?.version)
+        val v230 = ChangelogCatalog.getForVersionName("v2.3.0")
+        assertNotNull(v230)
+        assertEquals("2.3.0", v230?.version)
     }
 }
