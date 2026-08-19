@@ -160,14 +160,7 @@ private fun TasksWidgetCompactContent(data: TasksWidgetData) {
             }
         }
         Spacer(GlanceModifier.defaultWeight())
-        Text(
-            text = syncStatusLine(data.lastSyncAt, data.lastSyncStatus, System.currentTimeMillis()),
-            style = TextStyle(
-                fontSize = 10.sp,
-                color = ColorProvider(ForfhColors.TextMuted),
-            ),
-            maxLines = 1,
-        )
+        WidgetSyncStatusText(data.lastSyncAt, data.lastSyncStatus)
     }
 }
 
@@ -251,14 +244,7 @@ private fun TasksWidgetStandardContent(data: TasksWidgetData) {
             }
         }
         Spacer(GlanceModifier.defaultWeight())
-        Text(
-            text = syncStatusLine(data.lastSyncAt, data.lastSyncStatus, System.currentTimeMillis()),
-            style = TextStyle(
-                fontSize = 10.sp,
-                color = ColorProvider(ForfhColors.TextMuted),
-            ),
-            maxLines = 1,
-        )
+        WidgetSyncStatusText(data.lastSyncAt, data.lastSyncStatus)
     }
 }
 
@@ -297,6 +283,18 @@ private fun StandardTaskRow(task: TaskEntity) {
             )
         }
     }
+}
+
+@Composable
+private fun WidgetSyncStatusText(lastSyncAt: Long, lastSyncStatus: String) {
+    Text(
+        text = syncStatusLine(lastSyncAt, lastSyncStatus, System.currentTimeMillis()),
+        style = TextStyle(
+            fontSize = 10.sp,
+            color = ColorProvider(ForfhColors.TextMuted),
+        ),
+        maxLines = 1,
+    )
 }
 
 private fun formatWidgetDeadline(epochMs: Long): String {
